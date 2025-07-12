@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { ShoppingCart, Search, Plus, Minus, X, CreditCard, User, Package, Filter, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CartItem from './CartItem';
+import { PrintableContent } from './PrintableContent';
 
 // Mock data and interfaces for the demo
 interface CartItemType {
@@ -354,7 +355,7 @@ const PosPage = () => {
   };
 
   const processCheckout = async (printReceipt: boolean) => {
-    // Mock checkout process
+    // Mock checkout process - replace with your actual API call
     console.log("Processing checkout...", {
       cart,
       customer,
@@ -362,9 +363,29 @@ const PosPage = () => {
       total: totalAmount
     });
     
-    setShowConfirmationModal(false);
-    setCart([]);
-    alert("Order completed successfully!");
+    try {
+      // Your existing API call logic would go here
+      // await createRequest("/inventories/pointsofsale", token, requestData, () => {}, "POST");
+      
+      // Clear the cart and close modal first
+      setCart([]);
+      setShowConfirmationModal(false);
+      
+      // Show success message
+      alert("Order completed successfully!");
+      
+      // Handle printing after a short delay to ensure DOM is updated
+      if (printReceipt) {
+        setTimeout(() => {
+          if (contentRef.current) {
+            window.print();
+          }
+        }, 500);
+      }
+    } catch (error) {
+      console.error("Checkout failed:", error);
+      alert("Checkout failed. Please try again.");
+    }
   };
 
   return (
@@ -598,11 +619,47 @@ const PosPage = () => {
                 >
                   Complete Order
                 </button>
+                <button
+                  onClick={() => processCheckout(true)}
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
+                >
+                  Complete & Print
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Hidden Print Content */}
+      <div ref={contentRef} style={{ display: 'none' }}>
+        <PrintableContent
+          paymentMethod={paymentMethod}
+          servedBy={user.full_name}
+          total={totalAmount}
+          cart={cart}
+          businessName={businessName}
+          isMobile={isMobile}
+        />
+      </div>
+
+      {/* Print Styles */}
+      <style jsx>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          ${contentRef.current ? `
+          div[style*="display: none"] {
+            display: block !important;
+            visibility: visible;
+          }
+          div[style*="display: none"] * {
+            visibility: visible;
+          }
+          ` : ''}
+        }
+      `}</style>
     </div>
   );
 };
