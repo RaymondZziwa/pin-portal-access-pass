@@ -63,7 +63,7 @@ const PinAuth = () => {
     }
   }, [pin]);
 
-  const keypadNumbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+  const keypadNumbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
   const renderPinDots = () => {
     return Array.from({ length: PIN_LENGTH }, (_, index) => (
@@ -132,7 +132,7 @@ const PinAuth = () => {
                 </div>
               )}
 
-              {/* Keypad */}
+              {/* Keypad - Updated layout to center 0 */}
               <div className="grid grid-cols-3 gap-3 mb-6">
                 {keypadNumbers.map((number) => (
                   <button
@@ -144,6 +144,18 @@ const PinAuth = () => {
                     {number}
                   </button>
                 ))}
+                {/* Empty space for alignment */}
+                <div></div>
+                {/* Centered 0 */}
+                <button
+                  onClick={() => handleKeypadClick('0')}
+                  disabled={isLoading}
+                  className="h-14 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 rounded-xl font-semibold text-lg text-gray-700 transition-all duration-150 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  0
+                </button>
+                {/* Empty space for alignment */}
+                <div></div>
               </div>
 
               {/* Action Buttons */}
