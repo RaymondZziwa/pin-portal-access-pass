@@ -46,6 +46,9 @@ const PinAuth = () => {
     
     if (pin === CORRECT_PIN) {
       setIsSuccess(true);
+      // Set authentication flag in localStorage
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('lastActivity', Date.now().toString());
       setTimeout(() => {
         navigate('/pos');
       }, 1500);
@@ -132,7 +135,7 @@ const PinAuth = () => {
                 </div>
               )}
 
-              {/* Keypad - Updated layout to center 0 */}
+              {/* Keypad */}
               <div className="grid grid-cols-3 gap-3 mb-6">
                 {keypadNumbers.map((number) => (
                   <button

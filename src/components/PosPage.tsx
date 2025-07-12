@@ -1,6 +1,7 @@
-
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { ShoppingCart, Search, Plus, Minus, X, CreditCard, User, Package, Filter } from 'lucide-react';
+import { ShoppingCart, Search, Plus, Minus, X, CreditCard, User, Package, Filter, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import CartItem from './CartItem';
 
 // Mock data and interfaces for the demo
 interface CartItemType {
@@ -54,79 +55,6 @@ const PosItemCard: React.FC<{
           <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
             {item?.unit_of_measure?.abbreviation || 'unit'}
           </span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const CartItem: React.FC<{
-  item: CartItemType;
-  updateQuantity: (id: number, quantity: number) => void;
-  updateSellingPrice: (id: number, price: number) => void;
-  updateDiscount: (id: number, discount: number) => void;
-  removeItemFromCart: (id: number) => void;
-  isMobile?: boolean;
-}> = ({ item, updateQuantity, updateSellingPrice, updateDiscount, removeItemFromCart, isMobile = false }) => {
-  return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="font-medium text-gray-800 flex-1 mr-2">{item.name}</h4>
-        <button
-          onClick={() => removeItemFromCart(item.id)}
-          className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-full transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-      
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Quantity:</span>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => updateQuantity(item.id, Math.max(0, item.quantity - 1))}
-              className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
-            <span className="w-8 text-center font-medium">{item.quantity}</span>
-            <button
-              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-              className="w-8 h-8 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full flex items-center justify-center transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Price:</span>
-          <input
-            type="number"
-            value={item.actual_selling_price}
-            onChange={(e) => updateSellingPrice(item.id, parseFloat(e.target.value) || 0)}
-            className="w-20 px-2 py-1 text-sm border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Discount:</span>
-          <input
-            type="number"
-            value={item.discount}
-            onChange={(e) => updateDiscount(item.id, parseFloat(e.target.value) || 0)}
-            className="w-20 px-2 py-1 text-sm border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-        
-        <div className="pt-2 border-t border-gray-100">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-700">Subtotal:</span>
-            <span className="font-bold text-blue-600">
-              UGX {((item.quantity * item.actual_selling_price) - (item.discount * item.quantity)).toFixed(2)}
-            </span>
-          </div>
         </div>
       </div>
     </div>
@@ -201,7 +129,65 @@ const PaymentComponent: React.FC<{
 };
 
 const PosPage = () => {
-  // Mock data - replace with your actual data fetching
+  const navigate = useNavigate();
+  
+  // Auto-logout functionality
+  const AUTO_LOGOUT_TIME = 2 * 60 * 1000; // 2 minutes in milliseconds
+  
+  useEffect(() => {
+    // Check if user is authenticated
+    const isAuthenticated = localStorage.getItem('isAuthenticated');
+    if (!isAuthenticated) {
+      navigate('/');
+      return;
+    }
+
+    // Set up activity tracking and auto-logout
+    let timeoutId: NodeJS.Timeout;
+    
+    const resetTimeout = () => {
+      clearTimeout(timeoutId);
+      localStorage.setItem('lastActivity', Date.now().toString());
+      timeoutId = setTimeout(() => {
+        handleLogout();
+      }, AUTO_LOGOUT_TIME);
+    };
+
+    const checkActivity = () => {
+      const lastActivity = localStorage.getItem('lastActivity');
+      if (lastActivity) {
+        const timeSinceLastActivity = Date.now() - parseInt(lastActivity);
+        if (timeSinceLastActivity > AUTO_LOGOUT_TIME) {
+          handleLogout();
+          return;
+        }
+      }
+      resetTimeout();
+    };
+
+    // Activity event listeners
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    events.forEach(event => {
+      document.addEventListener(event, resetTimeout, true);
+    });
+
+    checkActivity();
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach(event => {
+        document.removeEventListener(event, resetTimeout, true);
+      });
+    };
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('lastActivity');
+    navigate('/');
+  };
+
   const items: CartItemType[] = [
     {
       id: 1,
@@ -411,7 +397,7 @@ const PosPage = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-600">
                 {new Date().toLocaleDateString()}
               </div>
@@ -419,6 +405,13 @@ const PosPage = () => {
                 <User className="w-4 h-4" />
                 <span>{user.full_name}</span>
               </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
             </div>
           </div>
         </div>
