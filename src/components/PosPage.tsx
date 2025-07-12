@@ -644,12 +644,11 @@ const PosPage = () => {
       </div>
 
       {/* Print Styles */}
-      <style jsx>{`
+      <style>{`
         @media print {
           body * {
             visibility: hidden;
           }
-          ${contentRef.current ? `
           div[style*="display: none"] {
             display: block !important;
             visibility: visible;
@@ -657,7 +656,6 @@ const PosPage = () => {
           div[style*="display: none"] * {
             visibility: visible;
           }
-          ` : ''}
         }
       `}</style>
     </div>
