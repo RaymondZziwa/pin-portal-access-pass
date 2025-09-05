@@ -42,33 +42,37 @@ const PosItemCard: React.FC<{
 }> = ({ image, name, price, addItem, item, isMobile = false }) => {
   return (
     <div
-      className={`bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer border border-gray-100 group ${
-        isMobile ? "w-full" : "w-full"
-      }`}
-      onClick={addItem}
-    >
-      <div className="relative aspect-square overflow-hidden">
-        <img
-          src={`${imageURL}/${item.item_images[0].image_url}`|| "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23f3f4f6'/%3E%3Ctext x='50%' y='50%' fill='%239ca3af' font-family='sans-serif' font-size='16' text-anchor='middle' dominant-baseline='middle'%3ENo Image%3C/text%3E%3C/svg%3E"}
-          alt={name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        />
-        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 flex items-center justify-center">
-          <Plus className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        </div>
-      </div>
-      <div className="p-4">
-        <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 mb-2">{name}</h3>
-        <div className="flex justify-between items-center">
-          <span className="text-lg font-bold text-blue-600">
-            UGX {price}
-          </span>
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-            {item?.unit_of_measure?.abbreviation || 'unit'}
-          </span>
-        </div>
-      </div>
+  className={`h-48 w-48 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer border border-gray-100 group ${
+    isMobile ? "w-full" : "w-full"
+  }`}
+  onClick={addItem}
+>
+  <div className="relative overflow-hidden h-2/3 w-full">
+    <img
+      src={
+        item.item_images?.[0]?.image_url
+          ? `${imageURL}/${item.item_images[0].image_url}`
+          : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23f3f4f6'/%3E%3Ctext x='50%' y='50%' fill='%239ca3af' font-family='sans-serif' font-size='16' text-anchor='middle' dominant-baseline='middle'%3ENo Image%3C/text%3E%3C/svg%3E"
+      }
+      alt={name}
+      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+    />
+    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 flex items-center justify-center">
+      <Plus className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
     </div>
+  </div>
+
+  <div className="p-2">
+    <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 mb-1">{name}</h3>
+    <div className="flex items-center justify-between">
+      <span className="text-sm font-bold text-teal-600">UGX {price}</span>
+      <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+        {item?.unit_of_measure?.abbreviation || "unit"}
+      </span>
+    </div>
+  </div>
+</div>
+
   );
 };
 
@@ -87,7 +91,7 @@ const CategoryNav: React.FC<{
           onClick={() => onSelectCategory(category.id)}
           className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all duration-200 ${
             selectedCategory === category.id
-              ? 'bg-blue-600 text-white shadow-lg scale-105'
+              ? 'bg-teal-600 text-white shadow-lg scale-105'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -118,7 +122,7 @@ const PaymentComponent: React.FC<{
         <input
           type="text"
           onChange={(e) => setClientName(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
           placeholder="Enter customer name"
         />
       </div>
@@ -128,7 +132,7 @@ const PaymentComponent: React.FC<{
         <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className=" w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                className=" w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-teal-500 focus:border-teal-500"
               >
                 <option value="" disabled>Select Payment Method</option>
                 {pms.map((c) => (
@@ -143,6 +147,22 @@ const PaymentComponent: React.FC<{
 
 const PosPage = () => {
   const navigate = useNavigate();
+  const [showSelectionModal, setShowSelectionModal] = useState(false);
+  const [warehouseError, setWarehouseError] = useState("");
+  const [currencyError, setCurrencyError] = useState("");
+
+  useEffect(() => {
+    const checkSelections = () => {
+      const hasWarehouse = localStorage.getItem("selectedWarehouse");
+      const hasCurrency = localStorage.getItem("selectedCurrency");
+      
+      if (!hasWarehouse || !hasCurrency) {
+        setShowSelectionModal(true);
+      }
+    };
+
+    checkSelections();
+  }, []);
   
   // Auto-logout functionality
   const AUTO_LOGOUT_TIME = 2 * 60 * 1000; // 2 minutes in milliseconds
@@ -218,14 +238,42 @@ const PosPage = () => {
   const [paymentMethod, setPaymentMethod] = useState<string | null>("");
 
   const handleWarehouseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setWarehouse(e.target.value);
-    localStorage.setItem("selectedWarehouse", e.target.value);
+    const value = e.target.value;
+    setWarehouse(value);
+    localStorage.setItem("selectedWarehouse", value);
+    if (value) setWarehouseError("");
+
   };
 
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setCurrency(e.target.value);
-    localStorage.setItem("selectedCurrency", e.target.value);
+    const value = e.target.value;
+    setCurrency(value);
+    localStorage.setItem("selectedCurrency", value);
+    if (value) setCurrencyError("");
   };
+
+  const validateSelections = () => {
+    let isValid = true;
+    
+    if (!warehouse) {
+      setWarehouseError("Please select a warehouse");
+      isValid = false;
+    }
+    
+    if (!currency) {
+      setCurrencyError("Please select a currency");
+      isValid = false;
+    }
+    
+    return isValid;
+  };
+
+  const confirmSelections = () => {
+    if (validateSelections()) {
+      setShowSelectionModal(false);
+    }
+  };
+
 
   const isMobile = window.innerWidth < 768;
 
@@ -381,12 +429,83 @@ const PosPage = () => {
       }
     } catch (error) {
       console.error("Checkout failed:", error);
-      alert("Checkout failed. Please try again.");
+      toast.error(error?.response?.data?.message || "Checkout failed. Please try again.");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-teal-50">
+
+{showSelectionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+              Required Settings
+            </h2>
+            <p className="text-gray-600 mb-6 text-center">
+              Please select a warehouse and currency to continue using the POS system.
+            </p>
+
+            <div className="space-y-6">
+              {/* Warehouse Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Warehouse
+                </label>
+                <select
+                  value={warehouse}
+                  onChange={handleWarehouseChange}
+                  className={`w-full p-3 border rounded-md  ${
+                    warehouseError ? "border-red-500" : "border-gray-200"
+                  }`}
+                >
+                  <option value="">Select warehouse</option>
+                  {warehouses.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </select>
+                {warehouseError && (
+                  <p className="mt-1 text-sm text-red-600">{warehouseError}</p>
+                )}
+              </div>
+
+              {/* Currency Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Currency
+                </label>
+                <select
+                  value={currency}
+                  onChange={handleCurrencyChange}
+                  className={`w-full p-3 border rounded-md  ${
+                    currencyError ? "border-red-500" : "border-gray-200"
+                  }`}
+                >
+                  <option value="">Select currency</option>
+                  {currencies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {currencyError && (
+                  <p className="mt-1 text-sm text-red-600">{currencyError}</p>
+                )}
+              </div>
+
+              <button
+                onClick={confirmSelections}
+                className="w-full py-3 px-4 bg-teal-500 hover:bg-teal-800 text-white rounded-xl font-medium transition-all transform hover:scale-105 mt-4"
+              >
+                Confirm Selections
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <Toaster />
       <header className="bg-white shadow-sm border-b sticky top-0 z-40">
@@ -394,9 +513,7 @@ const PosPage = () => {
         <div className="flex items-center justify-between">
           {/* Left Section */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-              <ShoppingCart className="w-6 h-6 text-white" />
-            </div>
+            
             <div>
               <h1 className="text-xl font-bold text-gray-900">POS</h1>
               <p className="text-sm text-gray-500">{businessName}</p>
@@ -413,7 +530,7 @@ const PosPage = () => {
                 placeholder="Search products..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               />
             </div>
 
@@ -423,7 +540,7 @@ const PosPage = () => {
               <select
                 value={warehouse}
                 onChange={handleWarehouseChange}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-teal-500 focus:border-teal-500"
               >
                 <option value="" disabled>Select warehouse</option>
                 {warehouses.map((w) => (
@@ -438,7 +555,7 @@ const PosPage = () => {
               <select
                 value={currency}
                 onChange={handleCurrencyChange}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-teal-500 focus:border-teal-500"
               >
                 <option value="" disabled>Select currency</option>
                 {currencies.map((c) => (
@@ -521,7 +638,7 @@ const PosPage = () => {
                 >
                   Previous
                 </button>
-                <span className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-sm font-medium">
+                <span className="px-4 py-2 bg-teal-50 text-teal-600 rounded-xl text-sm font-medium">
                   Page {currentPage} of {totalPages}
                 </span>
                 <button
@@ -543,7 +660,7 @@ const PosPage = () => {
             <div className="p-6 border-b border-gray-100 bg-white">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xl font-bold text-gray-800">Order Summary</h2>
-                <div className="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
+                <div className="bg-teal-100 text-teal-600 px-3 py-1 rounded-full text-sm font-medium">
                   {cart.length} items
                 </div>
               </div>
@@ -578,9 +695,9 @@ const PosPage = () => {
             {/* Cart Footer */}
             <div className="p-6 border-t border-gray-100 bg-white">
               <div className="space-y-4">
-                <div className="flex justify-between items-center p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl">
+                <div className="flex justify-between items-center p-4 bg-gradient-to-r from-teal-50 to-purple-50 rounded-xl">
                   <span className="font-semibold text-gray-700">Total Amount:</span>
-                  <span className="font-bold text-2xl text-blue-600">
+                  <span className="font-bold text-2xl text-teal-600">
                     UGX {totalAmount.toFixed(2)}
                   </span>
                 </div>
@@ -589,7 +706,7 @@ const PosPage = () => {
                   disabled={cart.length === 0}
                   className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 ${
                     cart.length > 0 
-                      ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
+                      ? "bg-teal-500 hover:bg-teal-800 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
                       : "bg-gray-200 text-gray-500 cursor-not-allowed"
                   }`}
                 >
@@ -633,7 +750,7 @@ const PosPage = () => {
                 </div>
                 <div className="flex justify-between items-center font-bold text-lg pt-2 border-t border-gray-100">
                   <span>Total:</span>
-                  <span className="text-blue-600">UGX {totalAmount.toFixed(2)}</span>
+                  <span className="text-teal-600">UGX {totalAmount.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -646,13 +763,13 @@ const PosPage = () => {
                 </button>
                 <button
                   onClick={() => processCheckout(false)}
-                  className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-teal-600 to-purple-600 hover:from-teal-700 hover:to-purple-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
                 >
                   Complete Order
                 </button>
                 <button
                   onClick={() => processCheckout(true)}
-                  className="flex-1 py-3 px-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
+                  className="flex-1 py-3 px-4 bg-teal-500 text-white rounded-xl font-medium hover:bg-teal-800 transition-all transform hover:scale-105"
                 >
                   Complete & Print
                 </button>

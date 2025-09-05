@@ -50,7 +50,7 @@ const CartItem: React.FC<CartItemProps> = ({
             <input
               type="number"
               step="any"
-              className="w-16 px-2 py-1 text-center border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-16 px-2 py-1 text-center border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
               value={item.quantity}
               onChange={(e) => {
                 const value = parseFloat(e.target.value);
@@ -61,7 +61,7 @@ const CartItem: React.FC<CartItemProps> = ({
             />
             <button
               onClick={() => updateQuantity(item.id, item.quantity + 1)}
-              className="w-8 h-8 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full flex items-center justify-center transition-colors"
+              className="w-8 h-8 bg-teal-100 hover:bg-teal-200 text-teal-600 rounded-full flex items-center justify-center transition-colors"
             >
               <Plus className="w-3 h-3" />
             </button>
@@ -73,7 +73,7 @@ const CartItem: React.FC<CartItemProps> = ({
           <span className="text-sm text-gray-600">Price:</span>
           <input
             type="number"
-            className="w-24 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right"
+            className="w-24 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-right"
             value={item.actual_selling_price || item.selling_price || 0}
             onChange={(e) => updateSellingPrice(item.id, parseFloat(e.target.value) || 0)}
             min="1"
@@ -83,7 +83,7 @@ const CartItem: React.FC<CartItemProps> = ({
         {/* Subtotal */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <span className="text-sm font-medium text-gray-700">Subtotal:</span>
-          <span className="font-bold text-blue-600">UGX {subtotal.toFixed(2)}</span>
+          <span className="font-bold text-teal-600">UGX {subtotal.toFixed(2)}</span>
         </div>
 
         {/* Expand/Collapse Button */}
@@ -104,7 +104,7 @@ const CartItem: React.FC<CartItemProps> = ({
               <span className="text-sm text-gray-600">Discount (per item):</span>
               <input
                 type="number"
-                className="w-20 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right"
+                className="w-20 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-right"
                 value={item.discount}
                 onChange={(e) => updateDiscount(item.id, parseFloat(e.target.value) || 0)}
                 min="0"

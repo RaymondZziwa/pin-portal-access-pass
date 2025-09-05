@@ -176,15 +176,6 @@ const PinAuth = () => {
             </>
           )}
         </div>
-
-        {/* Footer Info */}
-        <div className="text-center text-sm text-gray-500">
-          <p className="flex items-center justify-center space-x-1">
-            <Lock className="w-4 h-4" />
-            <span>Your data is protected with end-to-end encryption</span>
-          </p>
-          {/* <p className="mt-2 text-xs">Demo PIN: 1234</p> */}
-        </div>
       </div>
     </div>
   );
