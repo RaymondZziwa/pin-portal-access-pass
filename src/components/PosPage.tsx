@@ -414,7 +414,7 @@ const PosPage = () => {
       );
       // Show success message
       toast.success("Order completed successfully!");
-      
+      setShowConfirmationModal(false)
       // Handle printing after a short delay to ensure DOM is updated
       if (printReceipt) {
         setTimeout(() => {
@@ -763,7 +763,7 @@ const PosPage = () => {
                 </button>
                 <button
                   onClick={() => processCheckout(false)}
-                  className="flex-1 py-3 px-4 bg-gradient-to-r from-teal-600 to-purple-600 hover:from-teal-700 hover:to-purple-700 text-white rounded-xl font-medium transition-all transform hover:scale-105"
+                  className="flex-1 py-3 px-4 bg-teal-500 text-white rounded-xl font-medium hover:bg-teal-800 transition-all transform hover:scale-105"
                 >
                   Complete Order
                 </button>

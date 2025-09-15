@@ -7,6 +7,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import PinAuth from "./components/PinAuth";
 import PosPage from "./components/PosPage";
 import NotFound from "./pages/NotFound";
+import "primereact/resources/themes/lara-light-blue/theme.css";  
+import "primereact/resources/primereact.min.css";             
+import "primeicons/primeicons.css";                         
+
 
 const queryClient = new QueryClient();
 
