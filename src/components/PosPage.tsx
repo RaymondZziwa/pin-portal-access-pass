@@ -154,9 +154,8 @@ const PosPage = () => {
   useEffect(() => {
     const checkSelections = () => {
       const hasWarehouse = localStorage.getItem("selectedWarehouse");
-      const hasCurrency = localStorage.getItem("selectedCurrency");
       
-      if (!hasWarehouse || !hasCurrency) {
+      if (!hasWarehouse) {
         setShowSelectionModal(true);
       }
     };
@@ -232,7 +231,7 @@ const PosPage = () => {
   const user = JSON.parse(localStorage.getItem('user'))
   const { data: warehouses } = useWarehouses()
   const token = useSelector((state: RootState) => state.userAuth.token.access_token)
-  const {data: currencies} = useCurrencies()
+  const { data: currencies } = useCurrencies()
   const [warehouse, setWarehouse] = useState(() => localStorage.getItem("selectedWarehouse") || "");
   const [currency, setCurrency] = useState(() => localStorage.getItem("selectedCurrency") || "");
   const [paymentMethod, setPaymentMethod] = useState<string | null>("");
@@ -241,6 +240,7 @@ const PosPage = () => {
     const value = e.target.value;
     setWarehouse(value);
     localStorage.setItem("selectedWarehouse", value);
+    localStorage.setItem("selectedCurrency", user?.base_currency.id);
     if (value) setWarehouseError("");
 
   };
@@ -248,7 +248,6 @@ const PosPage = () => {
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setCurrency(value);
-    localStorage.setItem("selectedCurrency", value);
     if (value) setCurrencyError("");
   };
 
@@ -260,10 +259,10 @@ const PosPage = () => {
       isValid = false;
     }
     
-    if (!currency) {
-      setCurrencyError("Please select a currency");
-      isValid = false;
-    }
+    // if (!currency) {
+    //   setCurrencyError("Please select a currency");
+    //   isValid = false;
+    // }
     
     return isValid;
   };
@@ -471,7 +470,7 @@ const PosPage = () => {
                 )}
               </div>
 
-              {/* Currency Selection */}
+              {/* Currency Selection 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Currency
@@ -493,7 +492,7 @@ const PosPage = () => {
                 {currencyError && (
                   <p className="mt-1 text-sm text-red-600">{currencyError}</p>
                 )}
-              </div>
+              </div>*/}
 
               <button
                 onClick={confirmSelections}
@@ -537,7 +536,8 @@ const PosPage = () => {
             {/* Warehouse Dropdown */}
             <div className="flex items-center space-x-2">
               <Warehouse className="w-5 h-5 text-gray-500" />
-              <select
+                <select
+                disabled 
                 value={warehouse}
                 onChange={handleWarehouseChange}
                 className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-teal-500 focus:border-teal-500"
@@ -549,7 +549,7 @@ const PosPage = () => {
               </select>
             </div>
 
-            {/* Currency Dropdown */}
+            {/* Currency Dropdown 
             <div className="flex items-center space-x-2">
               <Coins className="w-5 h-5 text-gray-500" />
               <select
@@ -562,7 +562,7 @@ const PosPage = () => {
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-            </div>
+            </div>*/}
           </div>
 
           {/* Right Section: Date, User, Logout */}

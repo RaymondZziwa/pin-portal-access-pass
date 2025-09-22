@@ -64,6 +64,11 @@ const initialState: UserAuthType & { isFetchingLocalToken: boolean } = {
     is_subscription_expired: false,
     subscription_status: null,
   },
+  base_currency: {
+    id: "",
+    name: "",
+    code: ""
+  },
   isFetchingLocalToken: false,
 };
 

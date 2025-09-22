@@ -7,7 +7,13 @@ export interface SignUpData {
     phone_number: string;
     last_name: string;
     first_name: string;
-  }
+}
+  
+export interface BaseCurrency {
+    id: string,
+    name: string,
+    code: string
+}
   
   export interface UserAuthType {
     token: Token;
@@ -16,6 +22,7 @@ export interface SignUpData {
     role: string;
     permissions: string[];
     organisation: Organisation;
+    base_currency: BaseCurrency;
   }
   
   export interface Organisation {
