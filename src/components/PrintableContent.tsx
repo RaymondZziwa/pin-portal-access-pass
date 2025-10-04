@@ -32,7 +32,7 @@ export class PrintableContent extends React.Component<PrintableContentProps> {
         color: '#333',
         padding: '20px',
         fontFamily: "'Courier New', monospace",
-        maxWidth: '80mm',
+        maxWidth: '58mm',
         margin: '0 auto',
         backgroundColor: 'white'
       }}>
@@ -195,7 +195,7 @@ export class PrintableContent extends React.Component<PrintableContentProps> {
         <style>{`
           @media print {
             @page {
-              size: 80mm auto;
+              size: 58mm auto;
               margin: 0;
             }
             body { margin: 0; }

@@ -5,7 +5,7 @@ import CartItem from './CartItem';
 import { PrintableContent } from './PrintableContent';
 import useItemCategories from "@/hooks/useCategories";
 import useItems from "@/hooks/useItems";
-import { apiRequest, imageURL } from "@/lib/api";
+import { apiRequest, baseURL, imageURL } from "@/lib/api";
 import useWarehouses from "@/hooks/useWarehouses";
 import useCurrencies from "@/hooks/useCurrencies";
 import usePaymentMethods from "@/hooks/usePaymentMethods";
@@ -13,6 +13,7 @@ import { RootState } from "@/redux/store";
 import { useSelector } from "react-redux";
 import { toast, Toaster } from "sonner";
 import { useReactToPrint } from "react-to-print";
+import axios from "axios";
 
 // Mock data and interfaces for the demo
 interface CartItemType {
@@ -42,37 +43,36 @@ const PosItemCard: React.FC<{
 }> = ({ image, name, price, addItem, item, isMobile = false }) => {
   return (
     <div
-  className={`h-48 w-48 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer border border-gray-100 group ${
-    isMobile ? "w-full" : "w-full"
-  }`}
-  onClick={addItem}
->
-  <div className="relative overflow-hidden h-2/3 w-full">
-    <img
-      src={
-        item.item_images?.[0]?.image_url
-          ? `${imageURL}/${item.item_images[0].image_url}`
-          : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23f3f4f6'/%3E%3Ctext x='50%' y='50%' fill='%239ca3af' font-family='sans-serif' font-size='16' text-anchor='middle' dominant-baseline='middle'%3ENo Image%3C/text%3E%3C/svg%3E"
-      }
-      alt={name}
-      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-    />
-    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 flex items-center justify-center">
-      <Plus className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-    </div>
-  </div>
+      className={`h-48 w-48 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer border border-gray-100 group ${
+        isMobile ? "w-full" : "w-full"
+      }`}
+      onClick={addItem}
+    >
+      <div className="relative overflow-hidden h-2/3 w-full">
+        <img
+          src={
+            item.item_images?.[0]?.image_url
+              ? `${imageURL}/${item.item_images[0].image_url}`
+              : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23f3f4f6'/%3E%3Ctext x='50%' y='50%' fill='%239ca3af' font-family='sans-serif' font-size='16' text-anchor='middle' dominant-baseline='middle'%3ENo Image%3C/text%3E%3C/svg%3E"
+          }
+          alt={name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        />
+        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 flex items-center justify-center">
+          <Plus className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        </div>
+      </div>
 
-  <div className="p-2">
-    <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 mb-1">{name}</h3>
-    <div className="flex items-center justify-between">
-      <span className="text-sm font-bold text-teal-600">UGX {price}</span>
-      <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-        {item?.unit_of_measure?.abbreviation || "unit"}
-      </span>
+      <div className="p-2">
+        <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 mb-1">{name}</h3>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold text-teal-600">UGX {price}</span>
+          <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+            {item?.unit_of_measure?.abbreviation || "unit"}
+          </span>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
-
   );
 };
 
@@ -130,19 +130,27 @@ const PaymentComponent: React.FC<{
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
         <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className=" w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-teal-500 focus:border-teal-500"
-              >
-                <option value="" disabled>Select Payment Method</option>
-                {pms.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              
+          value={paymentMethod}
+          onChange={(e) => setPaymentMethod(e.target.value)}
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-teal-500 focus:border-teal-500"
+        >
+          <option value="" disabled>Select Payment Method</option>
+          {pms.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
         </select>
       </div>
     </div>
   );
+};
+
+// Device detection functions
+const isWebBluetoothSupported = (): boolean => {
+  return !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
+};
+
+const isMobileDevice = (): boolean => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
 const PosPage = () => {
@@ -150,6 +158,8 @@ const PosPage = () => {
   const [showSelectionModal, setShowSelectionModal] = useState(false);
   const [warehouseError, setWarehouseError] = useState("");
   const [currencyError, setCurrencyError] = useState("");
+  const [showPrinterHelp, setShowPrinterHelp] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     const checkSelections = () => {
@@ -228,7 +238,7 @@ const PosPage = () => {
   const [total, setTotal] = useState(0);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [query, setQuery] = useState("");
-  const user = JSON.parse(localStorage.getItem('user'))
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
   const { data: warehouses } = useWarehouses()
   const token = useSelector((state: RootState) => state.userAuth.token.access_token)
   const { data: currencies } = useCurrencies()
@@ -240,9 +250,8 @@ const PosPage = () => {
     const value = e.target.value;
     setWarehouse(value);
     localStorage.setItem("selectedWarehouse", value);
-    localStorage.setItem("selectedCurrency", user?.base_currency.id);
+    localStorage.setItem("selectedCurrency", user?.base_currency?.id || "");
     if (value) setWarehouseError("");
-
   };
 
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -259,11 +268,6 @@ const PosPage = () => {
       isValid = false;
     }
     
-    // if (!currency) {
-    //   setCurrencyError("Please select a currency");
-    //   isValid = false;
-    // }
-    
     return isValid;
   };
 
@@ -272,7 +276,6 @@ const PosPage = () => {
       setShowSelectionModal(false);
     }
   };
-
 
   const isMobile = window.innerWidth < 768;
 
@@ -283,9 +286,7 @@ const PosPage = () => {
     let result = items;
     if (selectedCategory !== 0) {
       result = result.filter(
-        (item) => item.
-        item_category_id
-         === selectedCategory
+        (item) => item.item_category_id === selectedCategory
       );
     }
     return result;
@@ -378,64 +379,81 @@ const PosPage = () => {
     setShowConfirmationModal(true);
   };
 
-  const processCheckout = async (printReceipt: boolean) => {
-
-    const payload = {
-      cashier_id: user.user.id, // Assuming this is the correct path to user ID
-      cashier_name: `${user.user.first_name} ${user.user.last_name}`,
-      customer_id: 0, // Default value as shown in example
-      customer_name: customer || "", // Use entered customer name or empty string
-      warehouse_id: localStorage.getItem("selectedWarehouse"), // You may want to make this dynamic
-      items: cart.map(item => ({
-        item_id: item.id.toString(), // Convert to string if needed
-        quantity: item.quantity,
-        discount: item.discount
-      })),
-      payment_method_id: paymentMethod || "db1c6e65-ca5d-4637-9edb-1e56f189145c", // Default or selected
-      amount_paid: 0, // You may want to calculate this if taking partial payments
-      sale_date: new Date().toLocaleDateString('en-US'), // Format as "6/24/2025"
-      currency_id: localStorage.getItem("selectedCurrency"), // You may want to make this dynamic
-      amount: totalAmount // The calculated total
-    };
-  
-    console.log("Checkout payload:", payload);
-    // Mock checkout process - replace with your actual API call
-    console.log("Processing checkout...", payload);
-    
-    try {
-      // Your existing API call logic would go here
-      // await createRequest("/inventories/pointsofsale", token, requestData, () => {}, "POST");
-      await apiRequest(
-        "/inventories/pointsofsale",
-        "POST",
-        token,
-        payload,
-      );
-      // Show success message
-      toast.success("Order completed successfully!");
-      setShowConfirmationModal(false)
-      // Handle printing after a short delay to ensure DOM is updated
-      if (printReceipt) {
-        setTimeout(() => {
-          if (contentRef.current) {
-            reactToPrintFn()
-                  // Clear the cart and close modal first
-            setCart([]);
-            setShowConfirmationModal(false);
-      
-          }
-        }, 500);
-      }
-    } catch (error) {
-      console.error("Checkout failed:", error);
-      toast.error(error?.response?.data?.message || "Checkout failed. Please try again.");
-    }
+const processCheckout = async (printReceipt: boolean) => {
+  const payload = {
+    cashier_id: user.user?.id,
+    cashier_name: `${user.user?.first_name || ''} ${user.user?.last_name || ''}`,
+    customer_id: 0,
+    customer_name: customer || "",
+    warehouse_id: localStorage.getItem("selectedWarehouse"),
+    items: cart.map(item => ({
+      item_id: item.id.toString(),
+      quantity: item.quantity,
+      discount: item.discount
+    })),
+    payment_method_id: paymentMethod || "db1c6e65-ca5d-4637-9edb-1e56f189145c",
+    amount_paid: 0,
+    sale_date: new Date().toLocaleDateString('en-US'),
+    currency_id: localStorage.getItem("selectedCurrency"),
+    amount: totalAmount,
+    is_print:printReceipt
   };
 
+  try {
+    setIsPrinting(true);
+    
+    // Process the sale
+ const saleResponse = await axios.post(
+    `${baseURL}/inventories/pointsofsale`,
+    payload,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      responseType: "blob", // ✅ important if backend returns a PDF
+    }
+  );
+
+  // If backend returns JSON + PDF sometimes
+  if (saleResponse.headers["content-type"]?.includes("application/json")) {
+    const json = await saleResponse.data.text();
+    const parsed = JSON.parse(json);
+    toast.success(parsed.message);
+  }
+
+  // ✅ Treat response as blob for PDF download
+  if (saleResponse.data) {
+    const blob = new Blob([saleResponse.data], { type: "application/pdf" });
+    const url = window.URL.createObjectURL(blob);
+
+    // Open in new tab
+    window.open(url, "_blank");
+
+    setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+  } else {
+    // Fallback to react-to-print
+    setTimeout(() => {
+      if (contentRef.current) {
+        reactToPrintFn();
+      }
+    }, 500);
+  }
+
+  // ✅ Clear cart and close modal
+  setCart([]);
+  setShowConfirmationModal(false);
+    
+  } catch (error: any) {
+    console.error("Checkout failed:", error);
+    toast.error(error?.response?.data?.message || "Checkout failed. Please try again.");
+  } finally {
+    setIsPrinting(false);
+  }
+};
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-teal-50">
-
-{showSelectionModal && (
+      {showSelectionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
@@ -446,7 +464,6 @@ const PosPage = () => {
             </p>
 
             <div className="space-y-6">
-              {/* Warehouse Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Warehouse
@@ -454,7 +471,7 @@ const PosPage = () => {
                 <select
                   value={warehouse}
                   onChange={handleWarehouseChange}
-                  className={`w-full p-3 border rounded-md  ${
+                  className={`w-full p-3 border rounded-md ${
                     warehouseError ? "border-red-500" : "border-gray-200"
                   }`}
                 >
@@ -470,30 +487,6 @@ const PosPage = () => {
                 )}
               </div>
 
-              {/* Currency Selection 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Currency
-                </label>
-                <select
-                  value={currency}
-                  onChange={handleCurrencyChange}
-                  className={`w-full p-3 border rounded-md  ${
-                    currencyError ? "border-red-500" : "border-gray-200"
-                  }`}
-                >
-                  <option value="">Select currency</option>
-                  {currencies.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                {currencyError && (
-                  <p className="mt-1 text-sm text-red-600">{currencyError}</p>
-                )}
-              </div>*/}
-
               <button
                 onClick={confirmSelections}
                 className="w-full py-3 px-4 bg-teal-500 hover:bg-teal-800 text-white rounded-xl font-medium transition-all transform hover:scale-105 mt-4"
@@ -505,91 +498,108 @@ const PosPage = () => {
         </div>
       )}
 
-      {/* Header */}
-      <Toaster />
-      <header className="bg-white shadow-sm border-b sticky top-0 z-40">
-      <div className="px-6 py-4">
-        <div className="flex items-center justify-between">
-          {/* Left Section */}
-          <div className="flex items-center space-x-3">
-            
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">POS</h1>
-              <p className="text-sm text-gray-500">{businessName}</p>
-            </div>
-          </div>
-
-          {/* Search + Dropdowns */}
-          <div className="flex-1 max-w-2xl mx-8 flex items-center space-x-4">
-            {/* Search Bar */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Warehouse Dropdown */}
-            <div className="flex items-center space-x-2">
-              <Warehouse className="w-5 h-5 text-gray-500" />
-                <select
-                disabled 
-                value={warehouse}
-                onChange={handleWarehouseChange}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-teal-500 focus:border-teal-500"
-              >
-                <option value="" disabled>Select warehouse</option>
-                {warehouses.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Currency Dropdown 
-            <div className="flex items-center space-x-2">
-              <Coins className="w-5 h-5 text-gray-500" />
-              <select
-                value={currency}
-                onChange={handleCurrencyChange}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-teal-500 focus:border-teal-500"
-              >
-                <option value="" disabled>Select currency</option>
-                {currencies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>*/}
-          </div>
-
-          {/* Right Section: Date, User, Logout */}
-          <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-600">
-              {new Date().toLocaleDateString()}
-            </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <User className="w-4 h-4" />
-              <span>{user.user.first_name} {user.user.last_name}</span>
-            </div>
+      {/* Printer Help Modal */}
+      {showPrinterHelp && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto">
+            <h3 className="text-lg font-bold mb-4">Printer Setup</h3>
+            {isMobileDevice() ? (
+              <div className="space-y-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-blue-800 mb-2">For Android Tablets:</h4>
+                  <ol className="list-decimal list-inside space-y-2 text-sm">
+                    <li>Install RawBT Printer app from Play Store</li>
+                    <li>Open RawBT and grant all permissions</li>
+                    <li>Enable "Web Server" in RawBT settings</li>
+                    <li>Pair your Bluetooth printer in Android settings</li>
+                    <li>Keep RawBT running in background</li>
+                  </ol>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-blue-800 mb-2">For Desktop:</h4>
+                  <ol className="list-decimal list-inside space-y-2 text-sm">
+                    <li>Make sure Bluetooth printer is turned on</li>
+                    <li>Ensure printer is paired with your computer</li>
+                    <li>Grant Bluetooth permissions when prompted</li>
+                  </ol>
+                </div>
+              </div>
+            )}
             <button
-              onClick={handleLogout}
-              className="flex items-center space-x-2 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+              onClick={() => setShowPrinterHelp(false)}
+              className="w-full mt-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
             >
-              <LogOut className="w-4 h-4" />
-              <span>Logout</span>
+              Close
             </button>
           </div>
         </div>
-      </div>
-    </header>
+      )}
+
+      <Toaster />
+      <header className="bg-white shadow-sm border-b sticky top-0 z-40">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">POS</h1>
+                <p className="text-sm text-gray-500">{businessName}</p>
+              </div>
+            </div>
+
+            <div className="flex-1 max-w-2xl mx-8 flex items-center space-x-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Warehouse className="w-5 h-5 text-gray-500" />
+                <select
+                  disabled 
+                  value={warehouse}
+                  onChange={handleWarehouseChange}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-teal-500 focus:border-teal-500"
+                >
+                  <option value="" disabled>Select warehouse</option>
+                  {warehouses.map((w) => (
+                    <option key={w.id} value={w.id}>{w.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-600">
+                {new Date().toLocaleDateString()}
+              </div>
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <User className="w-4 h-4" />
+                <span>{user.first_name} {user.last_name}</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
 
       <div className={`flex ${isMobile ? "flex-col" : "flex-row"} h-[calc(100vh-80px)]`}>
         {/* Products Section */}
         <div className={`${isMobile ? "w-full" : "w-3/5"} flex flex-col bg-white border-r border-gray-200`}>
-          {/* Category Filter */}
           <div className="p-6 border-b border-gray-100">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-800">Products</h2>
@@ -602,7 +612,6 @@ const PosPage = () => {
             />
           </div>
 
-          {/* Products Grid */}
           <div className="flex-1 overflow-y-auto p-6">
             {paginatedItems.length > 0 ? (
               <div className={`grid ${isMobile ? "grid-cols-2" : "grid-cols-3 lg:grid-cols-4"} gap-6`}>
@@ -627,7 +636,6 @@ const PosPage = () => {
             )}
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="p-6 border-t border-gray-100 bg-white">
               <div className="flex justify-center items-center space-x-2">
@@ -656,7 +664,6 @@ const PosPage = () => {
         {/* Cart Section */}
         <div className={`${isMobile ? "w-full" : "w-2/5"} flex flex-col bg-gradient-to-b from-gray-50 to-white`}>
           <div className="flex-1 flex flex-col">
-            {/* Cart Header */}
             <div className="p-6 border-b border-gray-100 bg-white">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xl font-bold text-gray-800">Order Summary</h2>
@@ -667,7 +674,6 @@ const PosPage = () => {
               <p className="text-sm text-gray-600">Review your order before checkout</p>
             </div>
 
-            {/* Cart Items */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {cart.length > 0 ? (
                 cart.map((item) => (
@@ -692,7 +698,6 @@ const PosPage = () => {
               )}
             </div>
 
-            {/* Cart Footer */}
             <div className="p-6 border-t border-gray-100 bg-white">
               <div className="space-y-4">
                 <div className="flex justify-between items-center p-4 bg-gradient-to-r from-teal-50 to-purple-50 rounded-xl">
@@ -763,41 +768,49 @@ const PosPage = () => {
                 </button>
                 <button
                   onClick={() => processCheckout(false)}
-                  className="flex-1 py-3 px-4 bg-teal-500 text-white rounded-xl font-medium hover:bg-teal-800 transition-all transform hover:scale-105"
+                  disabled={isPrinting}
+                  className="flex-1 py-3 px-4 bg-teal-500 text-white rounded-xl font-medium hover:bg-teal-800 transition-all transform hover:scale-105 disabled:opacity-50"
                 >
-                  Complete Order
+                  {isPrinting ? 'Processing...' : 'Complete Order'}
                 </button>
                 <button
                   onClick={() => processCheckout(true)}
-                  className="flex-1 py-3 px-4 bg-teal-500 text-white rounded-xl font-medium hover:bg-teal-800 transition-all transform hover:scale-105"
+                  disabled={isPrinting}
+                  className="flex-1 py-3 px-4 bg-teal-500 text-white rounded-xl font-medium hover:bg-teal-800 transition-all transform hover:scale-105 disabled:opacity-50"
                 >
-                  Complete & Print
+                  {isPrinting ? 'Printing...' : 'Complete & Print'}
                 </button>
               </div>
+              <button
+                onClick={() => setShowPrinterHelp(true)}
+                className="w-full text-xs text-blue-600 hover:text-blue-800 underline mt-4"
+              >
+                Printer not working?
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {/* Hidden Print Content */}
-        <div ref={contentRef} className="print-content"> {/* Add this wrapper */}
-          <PrintableContent
-            paymentMethod={paymentMethod}
-            servedBy={user.full_name}
-            total={totalAmount}
-            cart={cart}
-            businessName={businessName}
-            isMobile={isMobile}
+      <div ref={contentRef} className="print-content">
+        <PrintableContent
+          paymentMethod={paymentMethod}
+          servedBy={`${user.user?.first_name || ''} ${user.user?.last_name || ''}`}
+          total={totalAmount}
+          cart={cart}
+          businessName={businessName}
+          isMobile={isMobile}
         />
         <style>
           {`
-          @media print {
-            .print-content { display: block !important; }
-          }
-          .print-content { display: none; }
-        `}
+            @media print {
+              .print-content { display: block !important; }
+            }
+            .print-content { display: none; }
+          `}
         </style>
-        </div>
+      </div>
     </div>
   );
 };

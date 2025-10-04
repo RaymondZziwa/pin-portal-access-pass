@@ -1,10 +1,10 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios"
 import { toast } from "sonner";
 
-// export const baseURL = "http://api.saharaspicehub.com/api"
-// export const imageURL = "https://api.saharaspicehub.com/storage"
-export const baseURL = "https://latcuapidemo.efinanci.com/api"
-export const imageURL = "https://latcuapidemo.efinanci.com/storage"
+export const baseURL = "https://api.saharaspicehub.com/api"
+export const imageURL = "https://api.saharaspicehub.com/storage"
+// export const baseURL = "https://latcuapidemo.efinanci.com/api"
+// export const imageURL = "https://latcuapidemo.efinanci.com/storage"
 
 export const apiRequest = async <T>(
     endpoint: string,
