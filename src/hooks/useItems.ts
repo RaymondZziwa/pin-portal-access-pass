@@ -12,7 +12,7 @@ const useItems = () => {
   
 
   const { token, isFetchingLocalToken } = useAuth();
-
+ const storeId = localStorage.getItem("selectedWarehouse") || "1";
   const fetchDataFromApi = async () => {
     if (isFetchingLocalToken) return;
     if (token.access_token == "") {
@@ -21,7 +21,7 @@ const useItems = () => {
     dispatch(fetchDataStart()); // Dispatch action to indicate data fetching has started
     try {
       const response = await apiRequest<ServerResponse<InventoryItem[]>>(
-        ENDPOINTS.POS.GET_ALL_ITEMS,
+        ENDPOINTS.POS.GET_ALL_ITEMS(storeId),
         "GET",
         token.access_token
       );
@@ -41,7 +41,7 @@ const useItems = () => {
   };
   useEffect(() => {
     fetchDataFromApi();
-  }, [isFetchingLocalToken, token.access_token]);
+  }, [isFetchingLocalToken, token.access_token, storeId]);
 
   const data = useSelector((state: RootState) => state.items);
 

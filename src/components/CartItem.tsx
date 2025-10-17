@@ -21,6 +21,8 @@ const CartItem: React.FC<CartItemProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  console.log(item)
+
   const subtotal = (item.quantity * item.actual_selling_price) - (item.discount * item.quantity);
 
   return (
@@ -28,7 +30,7 @@ const CartItem: React.FC<CartItemProps> = ({
       {/* Main Item Info */}
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h4 className="font-semibold text-gray-800 flex-1 text-sm">{item.name}</h4>
+          <h4 className="font-semibold text-gray-800 flex-1 text-sm">{item.item.name}</h4>
           <button
             onClick={() => removeItemFromCart(item.id)}
             className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors"
@@ -49,13 +51,18 @@ const CartItem: React.FC<CartItemProps> = ({
             </button>
             <input
               type="number"
-              step="any"
+              min={0}
               className="w-16 px-2 py-1 text-center border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
-              value={item.quantity}
+              value={item.quantity === 0 ? "" : item.quantity}
               onChange={(e) => {
-                const value = parseFloat(e.target.value);
-                if (!isNaN(value) && value >= 0) {
-                  updateQuantity(item.id, value);
+                const value = e.target.value;
+                if (value === "") {
+                  updateQuantity(item.id, 0); // or handle empty case gracefully
+                } else {
+                  const numberValue = parseFloat(value);
+                  if (!isNaN(numberValue)) {
+                    updateQuantity(item.id, numberValue);
+                  }
                 }
               }}
             />

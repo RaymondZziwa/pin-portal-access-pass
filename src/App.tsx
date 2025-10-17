@@ -10,6 +10,8 @@ import NotFound from "./pages/NotFound";
 import "primereact/resources/themes/lara-light-blue/theme.css";  
 import "primereact/resources/primereact.min.css";             
 import "primeicons/primeicons.css";                         
+import RecentSales from "./components/recentSales";
+import CreditSales from "./components/creditSales";
 
 
 const queryClient = new QueryClient();
@@ -23,7 +25,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<PinAuth />} />
           <Route path="/pos" element={<PosPage />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/recent-sales" element={<RecentSales />} />
+          <Route path="/credit-sales" element={<CreditSales />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
