@@ -14,8 +14,6 @@ const PinAuth = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const navigate = useNavigate();
   
-  // Default PIN for demo (in real app, this would be validated against backend)
-  const CORRECT_PIN = '1234';
   const PIN_LENGTH = 5;
 
   const handleKeypadClick = (digit: string) => {

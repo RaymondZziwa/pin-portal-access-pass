@@ -5,6 +5,7 @@ import itemReducer from './slices/itemsSlice'
 import CurrencyReducer from './slices/currenciesSlice'
 import WarehouseReducer from './slices/warehousesSlice'
 import PaymentMethodReducer from './slices/payment_method'
+import CustomerReducer from './slices/customerSlice'
 
 export const store = configureStore({
   reducer: {
@@ -13,7 +14,8 @@ export const store = configureStore({
     paymentMethods: PaymentMethodReducer,
     items: itemReducer,
     categories: categoryReducer,
-    userAuth: userReducer
+    userAuth: userReducer,
+    customer: CustomerReducer
   },
 });
 

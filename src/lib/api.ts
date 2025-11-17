@@ -42,7 +42,6 @@ export const apiRequest = async <T>(
         }
         throw error; // Rethrow the error for further handling if needed
       }
-      // Handle non-Axios related errors
       throw new Error("An error occurred during the API request.");
     }
   };

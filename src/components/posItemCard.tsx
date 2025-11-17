@@ -40,10 +40,10 @@ export const PosItemCard: React.FC<PosItemCardProps> = ({
 }) => {
   return (
     <div
-      className={`h-48 w-48 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer border border-gray-100 group ${
+      className={`h-54 w-48 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer border border-gray-100 group ${
         isMobile ? "w-full" : "w-full"
       }`}
-      onClick={quantity === 0 ? undefined : addItem}
+      onClick={quantity == 0 ? undefined : addItem}
     >
       <div className="relative overflow-hidden h-2/3 w-full">
         <img
@@ -62,11 +62,11 @@ export const PosItemCard: React.FC<PosItemCardProps> = ({
 
       <div className="p-2">
         <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 mb-1">
-          {name} {quantity === 0 && (<span className="text-xs text-red-400">Out of stock</span>)}
+          {name} {quantity == 0 && (<span className="text-xs text-red-400">Out of stock</span>)}
         </h3>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-bold text-teal-600">UGX {price}</span>
-          <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+          <span className="text-xs font-bold text-teal-600">UGX {price}</span>
+          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
             QTY: {quantity}
           </span>
         </div>

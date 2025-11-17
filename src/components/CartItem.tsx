@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, X, Minus, Plus } from 'lucide-react';
 
 interface CartItemProps {
@@ -21,7 +21,14 @@ const CartItem: React.FC<CartItemProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  console.log(item)
+const [tempPrice, setTempPrice] = useState(
+  item.actual_selling_price ?? item.selling_price ?? ""
+);
+
+useEffect(() => {
+  // Keep tempPrice in sync when the item changes
+  setTempPrice(item.actual_selling_price ?? item.selling_price ?? "");
+}, [item.actual_selling_price, item.selling_price]);
 
   const subtotal = (item.quantity * item.actual_selling_price) - (item.discount * item.quantity);
 
@@ -50,22 +57,33 @@ const CartItem: React.FC<CartItemProps> = ({
               <Minus className="w-3 h-3" />
             </button>
             <input
-              type="number"
-              min={0}
-              className="w-16 px-2 py-1 text-center border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
-              value={item.quantity === 0 ? "" : item.quantity}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === "") {
-                  updateQuantity(item.id, 0); // or handle empty case gracefully
-                } else {
-                  const numberValue = parseFloat(value);
-                  if (!isNaN(numberValue)) {
-                    updateQuantity(item.id, numberValue);
-                  }
-                }
-              }}
-            />
+  type="number"
+  min={0}
+  step="any"
+  className="w-28 px-2 py-1 text-center border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
+  value={item.quantity ?? ""}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    // Allow empty input
+    if (value === "") {
+      updateQuantity(item.id, "");
+      return;
+    }
+
+    // Allow valid numeric strings, including partial ones like "0.", "0.0"
+    if (!isNaN(Number(value))) {
+      updateQuantity(item.id, value);
+    }
+  }}
+  onBlur={() => {
+    // Convert to number when user leaves the input
+    if (item.quantity !== "" && !isNaN(Number(item.quantity))) {
+      updateQuantity(item.id, Number(item.quantity));
+    }
+  }}
+/>
+
             <button
               onClick={() => updateQuantity(item.id, item.quantity + 1)}
               className="w-8 h-8 bg-teal-100 hover:bg-teal-200 text-teal-600 rounded-full flex items-center justify-center transition-colors"
@@ -78,13 +96,34 @@ const CartItem: React.FC<CartItemProps> = ({
         {/* Price Display */}
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm text-gray-600">Price:</span>
-          <input
-            type="number"
-            className="w-24 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-right"
-            value={item.actual_selling_price || item.selling_price || 0}
-            onChange={(e) => updateSellingPrice(item.id, parseFloat(e.target.value) || 0)}
-            min="1"
-          />
+            <input
+    type="number"
+    className="w-28 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent text-right"
+    value={tempPrice}
+    onChange={(e) => {
+      const value = e.target.value;
+      setTempPrice(value); // allow clearing field
+
+      if (value === "") {
+        // Don't immediately update parent with 0 — wait for blur
+        return;
+      }
+
+      const numberValue = parseFloat(value);
+      if (!isNaN(numberValue)) {
+        updateSellingPrice(item.id, numberValue);
+      }
+    }}
+    onBlur={() => {
+      // When user leaves input, handle empty gracefully
+      if (tempPrice === "") {
+        setTempPrice(""); // visually stays empty
+        updateSellingPrice(item.id, 0); // logical default
+      }
+    }}
+    placeholder="0.00"
+  />
+
         </div>
 
         {/* Subtotal */}

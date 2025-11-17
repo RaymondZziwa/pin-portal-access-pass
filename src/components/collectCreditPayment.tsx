@@ -2,16 +2,17 @@
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import usePaymentMethods from "@/hooks/usePaymentMethods";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, baseURL } from "@/lib/api";
 import { toast } from "sonner";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
+import axios from "axios";
 
 interface AddPaymentModalProps {
   visible: boolean;
     onHide: () => void;
     id: string;
-  onSuccess?: () => void;
+  onSuccess: () => void;
 }
 
 const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
@@ -22,9 +23,10 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
 }) => {
   const [amountPaid, setAmountPaid] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [transactionId, setTransactionId] = useState<string | null>("");
   const [loading, setLoading] = useState(false);
-    const { data: pms } = usePaymentMethods();
-    const token = useSelector((state: RootState) => state.userAuth.token.access_token);
+  const { data: pms } = usePaymentMethods();
+  const token = useSelector((state: RootState) => state.userAuth.token.access_token);
 
   const handleSubmit = async (id: string) => {
     if (!amountPaid || !paymentMethod) {
@@ -36,14 +38,48 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       currency_id: localStorage.getItem("selectedCurrency"),
       amount_paid: Number(amountPaid),
       payment_method_id: paymentMethod,
+      transactionId: transactionId,
       payment_date: new Date().toISOString().split("T")[0],
+      is_print: true
     };
 
     try {
       setLoading(true);
-      await apiRequest(`/inventories/${id}/settlepartialpayments`, "POST", token, payload);
-      toast.success("Payment recorded successfully");
-      if (onSuccess) onSuccess();
+      const saleResponse = await axios.post(
+        `${baseURL}/inventories/${id}/settlepartialpayments`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          responseType: "blob",
+        }
+      );
+
+      if (saleResponse.headers["content-type"]?.includes("application/json")) {
+        const json = await saleResponse.data.text();
+        const parsed = JSON.parse(json);
+        toast.success(parsed.message);
+      }
+
+      if (saleResponse.data) {
+        const blob = new Blob([saleResponse.data], { type: "application/pdf" });
+        const url = window.URL.createObjectURL(blob);
+
+        if (parseInt(amountPaid) !=0) {
+          const receiptTab = window.open(url, "_blank");
+          if (receiptTab) {
+            setTimeout(() => {
+              receiptTab.close();
+            }, 300000);
+          }
+        }
+        
+        setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+      } 
+      
+      onSuccess()
       onHide();
     } catch (error: any) {
       console.error(error);
@@ -110,6 +146,16 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           onChange={(e) => setAmountPaid(e.target.value)}
           placeholder="Enter amount paid"
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Transaction Id (Optional)</label>
+        <input
+          type="text"
+          onChange={(e) => setTransactionId(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          placeholder="Enter transaction ID"
         />
       </div>
     </Dialog>

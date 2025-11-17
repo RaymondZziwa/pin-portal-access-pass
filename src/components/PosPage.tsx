@@ -35,13 +35,15 @@ interface CartItemType {
   item: any;
 }
 
-const AUTO_LOGOUT_TIME = 5 * 60 * 1000; // 2 minutes in milliseconds
+const AUTO_LOGOUT_TIME = 5 * 60 * 1000;
 
 const PosPage = () => {
   const navigate = useNavigate();
   const [showSelectionModal, setShowSelectionModal] = useState(false);
   const [warehouseError, setWarehouseError] = useState("");
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isCreditSale, setIsCreditSale] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // State
   const { data: items } = useItems();
@@ -55,6 +57,7 @@ const PosPage = () => {
   const [paymentMethod, setPaymentMethod] = useState<string | null>("");
   const [transactionId, setTransactionId] = useState<string | null>("");
   const [amountPaid, setAmountPaid] = useState<string | null>("");
+  const [clientId, setClientId] = useState<string | null>("");
   
   // Refs
   const searchRef = useRef<HTMLInputElement>(null);
@@ -142,7 +145,7 @@ const PosPage = () => {
   const filteredItems = useMemo(() => {
     let result = items;
     if (selectedCategory !== 0) {
-      result = result.filter((item) => item.item_category_id === selectedCategory);
+      result = result.filter((item) => item.item.item_category_id === selectedCategory);
     }
     return result;
   }, [items, selectedCategory]);
@@ -158,7 +161,6 @@ const PosPage = () => {
     }
   }, [query, items, filteredItems]);
 
-  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
   const totalPages = Math.ceil(searchedItems.length / itemsPerPage);
   const paginatedItems = searchedItems.slice(
@@ -266,14 +268,15 @@ const PosPage = () => {
   };
 
   const processCheckout = async (printReceipt: boolean) => {
-    if (!amountPaid) {
-      toast.error('Please enter amount paid');
-      return;
-    }
+    // if (!amountPaid) {
+    //   toast.error('Please enter amount paid');
+    //   return;
+    // }
     const payload = {
       cashier_id: user.user?.id,
       cashier_name: `${user.user?.first_name || ''} ${user.user?.last_name || ''}`,
-      customer_id: '',
+      customer_id: clientId,
+      is_credit_sale: isCreditSale,
       transaction_reference: transactionId,
       customer_name: customer || "",
       warehouse_id: localStorage.getItem("selectedWarehouse"),
@@ -283,8 +286,8 @@ const PosPage = () => {
         discount: item.discount,
         price: item.actual_selling_price,
       })),
-      payment_method_id: paymentMethod || "db1c6e65-ca5d-4637-9edb-1e56f189145c",
-      amount_paid: parseInt(amountPaid),
+      payment_method_id: paymentMethod || "",
+      amount_paid: isCreditSale ? parseFloat(amountPaid) : totalAmount,
       sale_date: `${new Date().getDate()}/${new Date().getMonth() + 1}/${new Date().getFullYear()}`,
       currency_id: localStorage.getItem("selectedCurrency"),
       amount: totalAmount,
@@ -316,12 +319,12 @@ const PosPage = () => {
         const blob = new Blob([saleResponse.data], { type: "application/pdf" });
         const url = window.URL.createObjectURL(blob);
 
-        if (printReceipt) {
+        if (printReceipt && parseInt(amountPaid) !=0) {
           const receiptTab = window.open(url, "_blank");
           if (receiptTab) {
             setTimeout(() => {
               receiptTab.close();
-            }, 30000);
+            }, 300000);
           }
         }
         
@@ -335,10 +338,11 @@ const PosPage = () => {
       }
 
       setCart([]);
+      setPaymentMethod("");
       setShowConfirmationModal(false);
       
     } catch (error: any) {
-      console.error("Checkout failed:", error.response);
+      console.log("Checkout failed:", error.response);
       toast.error(error?.response?.data?.message || "Checkout failed. Please try again.");
     } finally {
       setIsPrinting(false);
@@ -375,7 +379,10 @@ const PosPage = () => {
                 ref={searchRef}
                 placeholder="Search products..."
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => { 
+                  setQuery(e.target.value)
+                  setCurrentPage(1)
+                }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               />
             </div>
@@ -387,8 +394,7 @@ const PosPage = () => {
               selectedCategory={selectedCategory}
               onSelectCategory={setSelectedCategory}
               setQuery={setQuery}
-              isMobile={isMobile}
-            />
+              isMobile={isMobile} setCurrentPage={setCurrentPage}            />
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
@@ -524,7 +530,10 @@ const PosPage = () => {
         setPaymentMethod={setPaymentMethod}
         setTransactionId={setTransactionId}
         setAmountPaid={setAmountPaid}
-      />
+        total={totalAmount}
+        setClientId={setClientId}
+        setIsCreditSale={setIsCreditSale}
+        isCreditSale={isCreditSale} />
 
       {/* Hidden Print Content */}
       <div ref={contentRef} className="print-content">

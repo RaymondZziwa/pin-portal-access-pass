@@ -1,15 +1,15 @@
 import { apiRequest } from "@/lib/api";
-import { ENDPOINTS } from "@/lib/endpoints";
-import { fetchDataStart, fetchDataSuccess, fetchDataFailure } from "@/redux/slices/warehousesSlice";
-import { ServerResponse } from "@/redux/slices/ServerResponse";
-import { Warehouse } from "@/redux/types/Warehouse";
+import { fetchDataStart, fetchDataSuccess, fetchDataFailure } from "@/redux/slices/customerSlice";
+import { ItemCategory } from "@/redux/types/ItemCategory";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import useAuth from "./useAuth";
+import { ENDPOINTS } from "@/lib/endpoints";
 import { RootState } from "@/redux/store";
+import { ServerResponse } from "@/redux/slices/ServerResponse";
 
-const useWarehouses = () => {
-  const dispatch = useDispatch();
+const useCustomer = () => {
+    const dispatch = useDispatch();
 
   const { token, isFetchingLocalToken } = useAuth();
 
@@ -20,18 +20,17 @@ const useWarehouses = () => {
     }
     dispatch(fetchDataStart()); // Dispatch action to indicate data fetching has started
     try {
-      const response = await apiRequest<ServerResponse<Warehouse[]>>(
-        ENDPOINTS.POS.GET_ALL_WAREHOUSES,
+      const response = await apiRequest<ServerResponse<ItemCategory[]>>(
+        ENDPOINTS.POS.GET_CUSTOMERS,
         "GET",
         token.access_token
       );
 
-      console.log(response.data)
       dispatch(
-                    fetchDataSuccess(
-                      response.success && response.data.length > 0 ? response.data : []
-                    )
-                  );// Dispatch action with fetched data on success
+        fetchDataSuccess(
+          response.success && response.data.length > 0 ? response.data : []
+        )
+      ); // Dispatch action with fetched data on success
     } catch (error) {
       dispatch(
         fetchDataFailure(
@@ -44,9 +43,9 @@ const useWarehouses = () => {
     fetchDataFromApi();
   }, [isFetchingLocalToken, token.access_token]);
 
-  const data = useSelector((state: RootState) => state.warehouses);
+  const data = useSelector((state: RootState) => state.customer);
 
   return { ...data, refresh: fetchDataFromApi };
 };
 
-export default useWarehouses;
+export default useCustomer;

@@ -5,8 +5,10 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { Currency } from "lucide-react";
 import AddPaymentModal from './collectCreditPayment';
+import { useNavigate } from 'react-router-dom';
 
 const CreditSales = () => {
+    const navigate = useNavigate()
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({
@@ -17,8 +19,11 @@ const CreditSales = () => {
     });
     const [showModal, setShowModal] = useState(false);
     const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
-    const user = useSelector((state: RootState) => state.userAuth.user.employee.id)
-    const token = useSelector((state: RootState) => state.userAuth.token.access_token);
+    const bkpUser = JSON.parse(localStorage.getItem('user'));
+const user = useSelector(
+  (state: RootState) => state.userAuth.user?.employee?.id ?? bkpUser?.user?.employee?.id
+);
+
 
     const handleCollectPayment = (saleId: string) => {
         setSelectedSaleId(saleId);
@@ -32,8 +37,7 @@ const CreditSales = () => {
     const fetchSalesData = async () => {
         try {
             setLoading(true);
-            
-            if (!token) {
+            if (!bkpUser.token.access_token) {
                 throw new Error('No authentication token found');
             }
 
@@ -43,9 +47,9 @@ const CreditSales = () => {
                 cashier_id: user
             };
 
-            const response = await axios.get(`${baseURL}/inventories/partialsales`, {
+            const response = await axios.get(`${baseURL}/inventories/partialsales?warehouse_id=${localStorage.getItem('selectedWarehouse')}`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${bkpUser.token.access_token}`,
                     'Content-Type': 'application/json'
                 },
                 params: params
@@ -154,9 +158,27 @@ const CreditSales = () => {
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">Sales Overview</h1>
-                    <p className="text-gray-600 mt-2">Manage and track your sales transactions</p>
+                <div className='flex flex-row justify-between'>
+                    <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900">Credit Overview</h1>
+                    <p className="text-gray-600 mt-2">Manage and track your credit transactions</p>
+                    </div>
+                    <button
+                        className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out active:scale-95 h-[50px]"
+                        onClick={()=> navigate('/pos')}
+                        >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-5 h-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Go Back
+                        </button>
+
                 </div>
 
                 {/* Summary Cards */}
@@ -288,12 +310,6 @@ const CreditSales = () => {
                             >
                                 Apply Filters
                             </button>
-                            <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Export
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -359,9 +375,6 @@ const CreditSales = () => {
                                             <div className={`text-sm font-medium ${parseFloat(sale.balance) > 0 ? 'text-red-600' : 'text-gray-900'}`}>
                                                 {formatCurrency(sale.balance)}
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            {getStatusBadge(sale.status)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {getStatusBadge(sale.status)}

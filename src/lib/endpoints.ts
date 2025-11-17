@@ -8,6 +8,7 @@ export const ENDPOINTS = {
         RECORD_SALE: "/inventories/items",
         GET_ALL_WAREHOUSES: "/people/warehouses",
         GET_ALL_CURRENCIES: "/accounts/currencies",
-        GET_ALL_PAYMENTMETHODS: "/accounts/paymentmethod"
+        GET_ALL_PAYMENTMETHODS: "/accounts/paymentmethod",
+        GET_CUSTOMERS: '/people/customers'
     }
 }

@@ -25,13 +25,17 @@ interface ConfirmationModalProps {
   customer: string | number | null;
   paymentMethod: string | null;
   isPrinting: boolean;
+  total: any
   isMobile: boolean;
   onClose: () => void;
   onProcessCheckout: (printReceipt: boolean) => void;
   setCustomer: (name: string | number | null) => void;
+  setClientId: (id: string) => void;
   setPaymentMethod: (method: string | null) => void;
   setTransactionId: (number: string | null) => void;
-  setAmountPaid: (amount: string) => void
+  setAmountPaid: (amount: string) => void;
+  setIsCreditSale: (bool: boolean) => void;
+  isCreditSale: boolean;
 }
 
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -47,7 +51,11 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   setCustomer,
   setPaymentMethod,
   setTransactionId,
-  setAmountPaid
+  setAmountPaid,
+  setClientId,
+  total,
+  isCreditSale,
+  setIsCreditSale
 }) => {
   if (!show) return null;
 
@@ -61,10 +69,11 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             setClientName={setCustomer}
             paymentMethod={paymentMethod}
             setPaymentMethod={setPaymentMethod}
+            total={total}
+            setClientId={setClientId}
             isMobile={isMobile}
             setTransactionId={setTransactionId}
-            setAmountPaid={setAmountPaid}
-          />
+            setAmountPaid={setAmountPaid} setIsCreditSale={setIsCreditSale} isCreditSale={isCreditSale}          />
 
           <div className="mt-6 pt-4 border-t border-gray-100">
             <div className="space-y-2 mb-4">
@@ -95,13 +104,15 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             >
               {isPrinting ? 'Processing...' : 'Complete Order'}
             </button>
-            <button
+            {
+              !isCreditSale && ( <button
               onClick={() => onProcessCheckout(true)}
               disabled={isPrinting}
               className="flex-1 py-3 px-4 bg-teal-500 text-white rounded-xl font-medium hover:bg-teal-800 transition-all transform hover:scale-105 disabled:opacity-50"
             >
               {isPrinting ? 'Printing...' : 'Complete & Print'}
-            </button>
+            </button>)
+            }
           </div>
         </div>
       </div>
