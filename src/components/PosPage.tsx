@@ -6,10 +6,11 @@ import { PrintableContent } from './PrintableContent';
 import useItems from "@/hooks/useItems";
 import { baseURL } from "@/lib/api";
 import useWarehouses from "@/hooks/useWarehouses";
+import useCurrencies from "@/hooks/useCurrencies";
+import usePaymentMethods from "@/hooks/usePaymentMethods";
 import { RootState } from "@/redux/store";
 import { useSelector } from "react-redux";
 import { toast, Toaster } from "sonner";
-import { useReactToPrint } from "react-to-print";
 import axios from "axios";
 import { CategoryNav } from "./categoryNav";
 import { ConfirmationModal } from "./confirmationModal";
@@ -44,6 +45,7 @@ const PosPage = () => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isCreditSale, setIsCreditSale] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showPrintable, setShowPrintable] = useState(false);
 
   // State
   const { data: items } = useItems();
@@ -61,16 +63,18 @@ const PosPage = () => {
   
   // Refs
   const searchRef = useRef<HTMLInputElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const reactToPrintFn = useReactToPrint({ contentRef });
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   // User data
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const company = useSelector((state: RootState) => state.userAuth.user.organisation)
   const { data: warehouses } = useWarehouses();
+  const { data: currencies } = useCurrencies();
+  const { data: paymentMethods } = usePaymentMethods();
   const token = useSelector((state: RootState) => state.userAuth.token.access_token);
   const [warehouse, setWarehouse] = useState(() => localStorage.getItem("selectedWarehouse") || "");
+  const businessName = JSON.parse(localStorage.getItem('user') || '').user.organisation.organisation_name
   
-  const businessName = "Sahara Spice Hub";
   const isMobile = window.innerWidth < 768;
 
   // Effects
@@ -267,87 +271,175 @@ const PosPage = () => {
     setShowConfirmationModal(true);
   };
 
-  const processCheckout = async (printReceipt: boolean) => {
-    // if (!amountPaid) {
-    //   toast.error('Please enter amount paid');
-    //   return;
-    // }
-    const payload = {
-      cashier_id: user.user?.id,
-      cashier_name: `${user.user?.first_name || ''} ${user.user?.last_name || ''}`,
-      customer_id: clientId,
-      is_credit_sale: isCreditSale,
-      transaction_reference: transactionId,
-      customer_name: customer || "",
-      warehouse_id: localStorage.getItem("selectedWarehouse"),
-      items: cart.map(item => ({
-        item_id: item.item.id.toString(),
-        quantity: item.quantity,
-        discount: item.discount,
-        price: item.actual_selling_price,
-      })),
-      payment_method_id: paymentMethod || "",
-      amount_paid: isCreditSale ? parseFloat(amountPaid) : totalAmount,
-      sale_date: `${new Date().getDate()}/${new Date().getMonth() + 1}/${new Date().getFullYear()}`,
-      currency_id: localStorage.getItem("selectedCurrency"),
-      amount: totalAmount,
-      is_print: printReceipt
-    };
+  const generateReceipt = () => {
+    return new Promise<void>((resolve, reject) => {
+      setShowPrintable(true);
 
-    try {
-      setIsPrinting(true);
-      
-      const saleResponse = await axios.post(
-        `${baseURL}/inventories/pointsofsale`,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          responseType: "blob",
-        }
-      );
+      // Use setTimeout to ensure the component is rendered before accessing it
+      setTimeout(() => {
+        const printContent = receiptRef.current;
+        if (printContent) {
+          const printWindow = window.open('', '_blank', 'width=800,height=600');
+          if (printWindow) {
+            const content = printContent.innerHTML;
 
-      if (saleResponse.headers["content-type"]?.includes("application/json")) {
-        const json = await saleResponse.data.text();
-        const parsed = JSON.parse(json);
-        toast.success(parsed.message);
-      }
+            printWindow.document.write(`
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <title>Receipt-${new Date().getTime()}</title>
+                  <meta charset="utf-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1">
+                  <style>
+                    body {
+                      font-family: Arial, sans-serif;
+                      margin: 0;
+                      background: white;
+                      color: #333;
+                    }
+                    @page {
+                      size: 80mm auto;
+                      margin: 0;
+                    }
+                    @media print {
+                      body { margin: 0; }
+                    }
+                  </style>
+                </head>
+                <body>
+                  <div>${content}</div>
+                </body>
+              </html>
+            `);
 
-      if (saleResponse.data) {
-        const blob = new Blob([saleResponse.data], { type: "application/pdf" });
-        const url = window.URL.createObjectURL(blob);
+            printWindow.document.close();
 
-        if (printReceipt && parseInt(amountPaid) !=0) {
-          const receiptTab = window.open(url, "_blank");
-          if (receiptTab) {
-            setTimeout(() => {
-              receiptTab.close();
-            }, 300000);
+            // Auto-print the receipt as PDF
+            printWindow.onload = () => {
+              printWindow.print();
+              // Close the window after printing (optional)
+              setTimeout(() => {
+                printWindow.close();
+              }, 1000);
+            };
+
+            printWindow.focus();
+
+            // Reset the printable state
+            setShowPrintable(false);
+            resolve();
+          } else {
+            toast.error('Popup blocked! Please allow popups for this site to view receipts.');
+            setShowPrintable(false);
+            reject(new Error('Popup blocked'));
           }
+        } else {
+          reject(new Error('Receipt content not found'));
         }
-        
-        setTimeout(() => window.URL.revokeObjectURL(url), 5000);
-      } else {
-        setTimeout(() => {
-          if (contentRef.current) {
-            reactToPrintFn();
-          }
-        }, 50000);
-      }
+      }, 100);
+    });
+  };
 
+  const handlePrintInNewTab = () => {
+    generateReceipt().then(() => {
+      // Clear state after receipt is generated
       setCart([]);
       setPaymentMethod("");
+      setTransactionId("");
+      setAmountPaid("");
+      setClientId("");
+      setIsCreditSale(false);
       setShowConfirmationModal(false);
-      
-    } catch (error: any) {
-      console.log("Checkout failed:", error.response);
-      toast.error(error?.response?.data?.message || "Checkout failed. Please try again.");
-    } finally {
       setIsPrinting(false);
-    }
+    }).catch((error) => {
+      console.error('Receipt generation failed:', error);
+      // Still clear state on error to prevent stuck state
+      setCart([]);
+      setPaymentMethod("");
+      setTransactionId("");
+      setAmountPaid("");
+      setClientId("");
+      setIsCreditSale(false);
+      setShowConfirmationModal(false);
+      setIsPrinting(false);
+    });
   };
+
+const processCheckout = async (printReceipt: boolean) => {
+  const payload = {
+    cashier_id: user.user?.id,
+    cashier_name: `${user.user?.first_name || ''} ${user.user?.last_name || ''}`,
+    customer_id: clientId,
+    is_credit_sale: isCreditSale,
+    transaction_reference: transactionId,
+    customer_name: customer || "",
+    warehouse_id: localStorage.getItem("selectedWarehouse"),
+    items: cart.map(item => ({
+      item_id: item.item.id.toString(),
+      quantity: item.quantity,
+      discount: item.discount,
+      price: item.actual_selling_price,
+    })),
+    payment_method_id: paymentMethod || "",
+    amount_paid: isCreditSale ? parseFloat(amountPaid || "0") : totalAmount,
+    sale_date: `${new Date().getDate()}/${new Date().getMonth() + 1}/${new Date().getFullYear()}`,
+    currency_id: localStorage.getItem("selectedCurrency"),
+    amount: totalAmount,
+    is_print: printReceipt,
+  };
+
+  try {
+    setIsPrinting(true);
+
+    // Generate receipt immediately on frontend
+    if (printReceipt) {
+      await generateReceipt();
+    }
+
+    // Send sale data to backend asynchronously without waiting for response
+    axios.post(
+      `${baseURL}/inventories/pointsofsale`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        responseType: "blob",
+      }
+    ).then((saleResponse) => {
+      if (saleResponse.headers["content-type"]?.includes("application/json")) {
+        saleResponse.data.text().then((text) => {
+          const parsed = JSON.parse(text);
+          toast.success(parsed.message);
+        });
+      }
+    }).catch((error: any) => {
+      console.log("Backend sale processing failed:", error.response);
+      // Don't show error toast here as receipt was already generated
+      // The sale might still be processed successfully even if backend response fails
+    });
+
+    // Show success message immediately after receipt generation
+    toast.success("Sale completed successfully!");
+
+    // Clear cart and reset state after successful receipt generation
+    setCart([]);
+    setPaymentMethod("");
+    setTransactionId("");
+    setAmountPaid("");
+    setClientId("");
+    setIsCreditSale(false);
+    setShowConfirmationModal(false);
+
+  } catch (error: any) {
+    console.log("Checkout failed:", error.response);
+    toast.error(error?.response?.data?.message || "Checkout failed. Please try again.");
+  } finally {
+    setIsPrinting(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-teal-50">
@@ -394,7 +486,9 @@ const PosPage = () => {
               selectedCategory={selectedCategory}
               onSelectCategory={setSelectedCategory}
               setQuery={setQuery}
-              isMobile={isMobile} setCurrentPage={setCurrentPage}            />
+              isMobile={isMobile} 
+              setCurrentPage={setCurrentPage} 
+            />
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
@@ -533,27 +627,38 @@ const PosPage = () => {
         total={totalAmount}
         setClientId={setClientId}
         setIsCreditSale={setIsCreditSale}
-        isCreditSale={isCreditSale} />
+        isCreditSale={isCreditSale} 
+      />
 
-      {/* Hidden Print Content */}
-      <div ref={contentRef} className="print-content">
-        <PrintableContent
-          paymentMethod={paymentMethod}
-          servedBy={`${user.user?.first_name || ''} ${user.user?.last_name || ''}`}
-          total={totalAmount}
-          cart={cart}
-          businessName={businessName}
-          isMobile={isMobile}
-        />
-        <style>
-          {`
-            @media print {
-              .print-content { display: block !important; }
-            }
-            .print-content { display: none; }
-          `}
-        </style>
-      </div>
+      {/* Conditionally Rendered Print Content */}
+      {showPrintable && (
+        <div style={{ display: "none" }}>
+          <div ref={receiptRef}>
+            <PrintableContent
+              company={company}
+              store={warehouses.find((w) => w.id === warehouse)?.name}
+              customer={customer}
+              sale={{
+                cashier: `${user.user?.first_name || ''} ${user.user?.last_name || ''}`.trim() || user.user?.username || 'Admin'
+              }}
+              items={cart}
+              totals={{
+                total: totalAmount,
+                tax: 0, // You might want to calculate tax here if needed
+                tax_rate: 0,
+                discount: cart.reduce((sum, item) => sum + item.discount * item.quantity, 0)
+              }}
+              payment={{
+                method: paymentMethods.find((pm) => pm.id.toString() === paymentMethod)?.name || "Cash",
+                amount_paid: isCreditSale ? parseFloat(amountPaid || "0") : totalAmount,
+                change: 0 // Calculate change if needed
+              }}
+              currency={currencies.find((c) => c.id.toString() === localStorage.getItem("selectedCurrency")) || user?.base_currency}
+              amountPaid={isCreditSale ? parseFloat(amountPaid || "0") : totalAmount}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

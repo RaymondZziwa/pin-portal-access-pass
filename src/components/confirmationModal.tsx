@@ -1,5 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { PaymentComponent } from './paymentComponent';
+import { useReactToPrint } from 'react-to-print';
+import { PrintableContent } from './PrintableContent';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/redux/store';
 
 interface CartItemType {
   id: number;
@@ -106,7 +110,9 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             </button>
             {
               !isCreditSale && ( <button
-              onClick={() => onProcessCheckout(true)}
+                onClick={() => {
+                  onProcessCheckout(true)
+              }}
               disabled={isPrinting}
               className="flex-1 py-3 px-4 bg-teal-500 text-white rounded-xl font-medium hover:bg-teal-800 transition-all transform hover:scale-105 disabled:opacity-50"
             >

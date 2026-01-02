@@ -1,8 +1,10 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios"
 import { toast } from "sonner";
 
-export const baseURL = "https://api.saharaspicehub.com/api"
+ export const baseURL = "https://api.saharaspicehub.com/api"
 export const imageURL = "https://api.saharaspicehub.com/storage"
+// export const baseURL = "https://senifinaapi.efinanci.com/api"
+// export const imageURL = "https://senifinaapi.efinanci.com/storage"
 // export const baseURL = "https://latcuapidemo.efinanci.com/api"
 // export const imageURL = "https://latcuapidemo.efinanci.com/storage"
 
