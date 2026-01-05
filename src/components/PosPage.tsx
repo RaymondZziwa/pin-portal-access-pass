@@ -60,7 +60,8 @@ const PosPage = () => {
   const [transactionId, setTransactionId] = useState<string | null>("");
   const [amountPaid, setAmountPaid] = useState<string | null>("");
   const [clientId, setClientId] = useState<string | null>("");
-  
+  const [receiptNumber, setReceiptNumber] = useState<string>("");
+
   // Refs
   const searchRef = useRef<HTMLInputElement>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -317,10 +318,10 @@ const PosPage = () => {
             // Auto-print the receipt as PDF
             printWindow.onload = () => {
               printWindow.print();
-              // Close the window after printing (optional)
+              // Close the window after 2 minutes to allow users ample time to save/print
               setTimeout(() => {
                 printWindow.close();
-              }, 1000);
+              }, 120000);
             };
 
             printWindow.focus();
@@ -359,6 +360,7 @@ const PosPage = () => {
       setTransactionId("");
       setAmountPaid("");
       setClientId("");
+      setReceiptNumber("");
       setIsCreditSale(false);
       setShowConfirmationModal(false);
       setIsPrinting(false);
@@ -366,6 +368,11 @@ const PosPage = () => {
   };
 
 const processCheckout = async (printReceipt: boolean) => {
+  // Generate unique receipt number (shorter format)
+  const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+  const randomStr = Math.random().toString(36).substr(2, 3).toUpperCase(); // 3 random chars
+  const newReceiptNumber = `RCP-${timestamp}${randomStr}`;
+
   const payload = {
     cashier_id: user.user?.id,
     cashier_name: `${user.user?.first_name || ''} ${user.user?.last_name || ''}`,
@@ -393,6 +400,8 @@ const processCheckout = async (printReceipt: boolean) => {
 
     // Generate receipt immediately on frontend
     if (printReceipt) {
+      // Set receipt number in state before generating receipt
+      setReceiptNumber(newReceiptNumber);
       await generateReceipt();
     }
 
@@ -429,6 +438,7 @@ const processCheckout = async (printReceipt: boolean) => {
     setTransactionId("");
     setAmountPaid("");
     setClientId("");
+    setReceiptNumber("");
     setIsCreditSale(false);
     setShowConfirmationModal(false);
 
@@ -437,6 +447,7 @@ const processCheckout = async (printReceipt: boolean) => {
     toast.error(error?.response?.data?.message || "Checkout failed. Please try again.");
   } finally {
     setIsPrinting(false);
+    setReceiptNumber("");
   }
 };
 
@@ -639,7 +650,8 @@ const processCheckout = async (printReceipt: boolean) => {
               store={warehouses.find((w) => w.id === warehouse)?.name}
               customer={customer}
               sale={{
-                cashier: `${user.user?.first_name || ''} ${user.user?.last_name || ''}`.trim() || user.user?.username || 'Admin'
+                cashier: `${user.user?.first_name || ''} ${user.user?.last_name || ''}`.trim() || user.user?.username || 'Admin',
+                receipt_number: receiptNumber || undefined
               }}
               items={cart}
               totals={{

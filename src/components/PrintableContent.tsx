@@ -69,7 +69,7 @@ export class PrintableContent extends React.Component<PrintableContentProps> {
             </div>
 
             <div className="receipt-title">SALES RECEIPT</div>
-            {/* <div>Receipt #: <strong>{sale?.receipt_number || "SR-001"}</strong></div> */}
+            <div>Receipt #: <strong>{sale?.receipt_number || "RCP-001"}</strong></div>
           </div>
 
           {/* Receipt info */}
