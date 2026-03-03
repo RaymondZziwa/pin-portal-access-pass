@@ -141,6 +141,7 @@ export const PaymentComponent: React.FC<PaymentComponentProps> = ({
               name="creditSale"
               checked={isCreditSale}
               onChange={() => {
+                 setIsRegistered(true)
                 setIsCreditSale(true);
                 setPaymentMethod(null);
                 setAmountPaid('');

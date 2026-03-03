@@ -3,13 +3,17 @@ import axios from 'axios';
 import { baseURL } from '@/lib/api';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
-import { Printer } from "lucide-react";
+import { Printer, RotateCcw, X } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 
 const RecentSales = () => {
     const navigate = useNavigate()
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showReverseModal, setShowReverseModal] = useState(false);
+    const [selectedSale, setSelectedSale] = useState(null);
+    const [reverseReason, setReverseReason] = useState('');
+    const [reversing, setReversing] = useState(false);
     const [filters, setFilters] = useState({
         status: 'all',
         startDate: '',
@@ -106,12 +110,66 @@ const user = useSelector(
   }
 };
 
+    const handleReverseSale = async () => {
+        if (!selectedSale || !reverseReason.trim()) {
+            return;
+        }
+
+        setReversing(true);
+        try {
+            const response = await axios.post(
+                `${baseURL}/inventories/pos/reversesale`,
+                {
+                    sale_unique_id: selectedSale.invoice_no,
+                    reason: reverseReason
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${bkpUser.token.access_token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            if (response.data.success) {
+                // Refresh sales data after successful reversal
+                await fetchSalesData();
+                // Close modal and reset state
+                setShowReverseModal(false);
+                setSelectedSale(null);
+                setReverseReason('');
+                // Show success message (you could use a toast here)
+                alert('Sale reversed successfully!');
+            } else {
+                throw new Error(response.data.message || 'Failed to reverse sale');
+            }
+        } catch (error) {
+            console.error('Error reversing sale:', error);
+            alert('Failed to reverse sale. Please try again.');
+        } finally {
+            setReversing(false);
+        }
+    };
+
+    const openReverseModal = (sale) => {
+        setSelectedSale(sale);
+        setShowReverseModal(true);
+        setReverseReason('');
+    };
+
+    const closeReverseModal = () => {
+        setShowReverseModal(false);
+        setSelectedSale(null);
+        setReverseReason('');
+    };
+
     
     const getStatusBadge = (status) => {
         const statusConfig = {
             paid: { color: 'bg-green-100 text-green-800', label: 'Paid' },
             credit: { color: 'bg-yellow-100 text-yellow-800', label: 'Credit' },
-            partial: { color: 'bg-blue-100 text-blue-800', label: 'Partial' }
+            partial: { color: 'bg-blue-100 text-blue-800', label: 'Partial' },
+            reversed: { color: 'bg-red-100 text-red-800', label: 'Reversed' }
         };
         
         const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', label: status };
@@ -405,10 +463,27 @@ const user = useSelector(
                                         </td>
                                       
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <button className="flex items-center gap-2 px-3 py-2 rounded bg-gray-100 hover:bg-gray-200" disabled={sale.paid === 0 ? true : false} onClick={() => handleReceiptPrint(sale.sale_id)}>
-                                                <Printer className="w-5 h-5" />
-                                                Print Receipt
-                                            </button>
+                                            {sale.status === 'reversed' ? (
+                                                <span className="text-sm text-gray-400">No actions available</span>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <button 
+                                                        className="flex items-center gap-2 px-3 py-2 rounded bg-gray-100 hover:bg-gray-200" 
+                                                        disabled={sale.paid === 0 ? true : false} 
+                                                        onClick={() => handleReceiptPrint(sale.sale_id)}
+                                                    >
+                                                        <Printer className="w-4 h-4" />
+                                                        <span className="text-sm">Print</span>
+                                                    </button>
+                                                    <button 
+                                                        className="flex items-center gap-2 px-3 py-2 rounded bg-red-100 hover:bg-red-200 text-red-700" 
+                                                        onClick={() => openReverseModal(sale)}
+                                                    >
+                                                        <RotateCcw className="w-4 h-4" />
+                                                        <span className="text-sm">Reverse</span>
+                                                    </button>
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -434,6 +509,68 @@ const user = useSelector(
                         </div>
                     )}
                 </div>
+
+                {/* Reverse Sale Modal */}
+                {showReverseModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold text-gray-900">Reverse Sale</h3>
+                                <button 
+                                    onClick={closeReverseModal}
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            
+                            {selectedSale && (
+                                <div className="mb-4">
+                                    <div className="bg-gray-50 p-3 rounded">
+                                        <p className="text-sm text-gray-600">
+                                            <span className="font-medium">Invoice:</span> {selectedSale.invoice_no}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                            <span className="font-medium">Customer:</span> {selectedSale.customer}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                            <span className="font-medium">Amount:</span> {formatCurrency(selectedSale.total)}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Reason for Reversal *
+                                </label>
+                                <textarea
+                                    value={reverseReason}
+                                    onChange={(e) => setReverseReason(e.target.value)}
+                                    placeholder="Enter reason for reversing this sale..."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                    rows={3}
+                                />
+                            </div>
+                            
+                            <div className="flex gap-3 justify-end">
+                                <button
+                                    onClick={closeReverseModal}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleReverseSale}
+                                    disabled={!reverseReason.trim() || reversing}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {reversing ? 'Reversing...' : 'Reverse Sale'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

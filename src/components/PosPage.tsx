@@ -61,7 +61,7 @@ const PosPage = () => {
   const [amountPaid, setAmountPaid] = useState<string | null>("");
   const [clientId, setClientId] = useState<string | null>("");
   const [receiptNumber, setReceiptNumber] = useState<string>("");
-
+  
   // Refs
   const searchRef = useRef<HTMLInputElement>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -274,46 +274,46 @@ const PosPage = () => {
 
   const generateReceipt = () => {
     return new Promise<void>((resolve, reject) => {
-      setShowPrintable(true);
-
-      // Use setTimeout to ensure the component is rendered before accessing it
-      setTimeout(() => {
-        const printContent = receiptRef.current;
-        if (printContent) {
+    setShowPrintable(true);
+    
+    // Use setTimeout to ensure the component is rendered before accessing it
+    setTimeout(() => {
+      const printContent = receiptRef.current;
+      if (printContent) {
           const printWindow = window.open('', '_blank', 'width=800,height=600');
-          if (printWindow) {
-            const content = printContent.innerHTML;
-
-            printWindow.document.write(`
-              <!DOCTYPE html>
-              <html>
-                <head>
-                  <title>Receipt-${new Date().getTime()}</title>
-                  <meta charset="utf-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1">
-                  <style>
-                    body {
-                      font-family: Arial, sans-serif;
+        if (printWindow) {
+          const content = printContent.innerHTML;
+          
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Receipt-${new Date().getTime()}</title>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                  body { 
+                    font-family: Arial, sans-serif; 
                       margin: 0;
-                      background: white;
-                      color: #333;
-                    }
+                    background: white;
+                    color: #333;
+                  }
                     @page {
                       size: 80mm auto;
                       margin: 0;
-                    }
-                    @media print {
-                      body { margin: 0; }
-                    }
-                  </style>
-                </head>
-                <body>
-                  <div>${content}</div>
-                </body>
-              </html>
-            `);
-
-            printWindow.document.close();
+                  }
+                  @media print {
+                    body { margin: 0; }
+                  }
+                </style>
+              </head>
+              <body>
+                <div>${content}</div>
+              </body>
+            </html>
+          `);
+          
+          printWindow.document.close();
 
             // Auto-print the receipt as PDF
             printWindow.onload = () => {
@@ -324,14 +324,14 @@ const PosPage = () => {
               }, 120000);
             };
 
-            printWindow.focus();
-
+          printWindow.focus();
+          
             // Reset the printable state
-            setShowPrintable(false);
+          setShowPrintable(false);
             resolve();
-          } else {
-            toast.error('Popup blocked! Please allow popups for this site to view receipts.');
-            setShowPrintable(false);
+        } else {
+          toast.error('Popup blocked! Please allow popups for this site to view receipts.');
+          setShowPrintable(false);
             reject(new Error('Popup blocked'));
           }
         } else {
@@ -344,13 +344,13 @@ const PosPage = () => {
   const handlePrintInNewTab = () => {
     generateReceipt().then(() => {
       // Clear state after receipt is generated
-      setCart([]);
-      setPaymentMethod("");
-      setTransactionId("");
-      setAmountPaid("");
-      setClientId("");
-      setIsCreditSale(false);
-      setShowConfirmationModal(false);
+    setCart([]);
+    setPaymentMethod("");
+    setTransactionId("");
+    setAmountPaid("");
+    setClientId("");
+    setIsCreditSale(false);
+    setShowConfirmationModal(false);
       setIsPrinting(false);
     }).catch((error) => {
       console.error('Receipt generation failed:', error);
@@ -395,6 +395,12 @@ const processCheckout = async (printReceipt: boolean) => {
     is_print: printReceipt,
   };
 
+  if (isCreditSale && !clientId) {
+    toast.error("Please select a customer for credit sales.");
+    return;
+    
+  }
+
   try {
     setIsPrinting(true);
 
@@ -417,10 +423,10 @@ const processCheckout = async (printReceipt: boolean) => {
         responseType: "blob",
       }
     ).then((saleResponse) => {
-      if (saleResponse.headers["content-type"]?.includes("application/json")) {
+    if (saleResponse.headers["content-type"]?.includes("application/json")) {
         saleResponse.data.text().then((text) => {
           const parsed = JSON.parse(text);
-          toast.success(parsed.message);
+      toast.success(parsed.message);
         });
       }
     }).catch((error: any) => {
@@ -430,7 +436,7 @@ const processCheckout = async (printReceipt: boolean) => {
     });
 
     // Show success message immediately after receipt generation
-    toast.success("Sale completed successfully!");
+    //toast.success("Sale completed successfully!");
 
     // Clear cart and reset state after successful receipt generation
     setCart([]);

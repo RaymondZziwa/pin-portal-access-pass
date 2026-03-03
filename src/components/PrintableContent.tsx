@@ -107,7 +107,7 @@ export class PrintableContent extends React.Component<PrintableContentProps> {
                     {item.item.name}
                     <div style={{ fontSize: "9px", color: "#666", fontWeight: "700" }}>
                       @ {Number(item.actual_selling_price).toFixed(2)}
-                      {item.discount ? <> | Disc: {Number(item.discount).toFixed(2)}</> : 0}
+                      {item.discount ? <> | Disc: {Number(item.discount).toFixed(1)}</> : 0}
                     </div>
                   </td>
                   <td style={{ textAlign: "center" }}>{item.quantity}</td>
@@ -115,7 +115,7 @@ export class PrintableContent extends React.Component<PrintableContentProps> {
                     {item.item.unit_of_measure ? item.item.unit_of_measure.name.toUpperCase() : "-"}
                   </td>
                   <td className="item_amount">
-                    {Number(item.actual_selling_price).toFixed(2) * item.quantity}
+                    {Number(item.actual_selling_price).toFixed(1) * item.quantity}
                   </td>
                 </tr>
               ))}

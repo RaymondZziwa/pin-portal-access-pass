@@ -52,6 +52,9 @@ export const SelectionModal: React.FC<SelectionModalProps> = ({
             {warehouseError && (
               <p className="mt-1 text-sm text-red-600">{warehouseError}</p>
             )}
+            {warehouses.filter((warehouse) => warehouse.warehouse_type === 'sales_store').length === 0 && (
+              <p className="mt-1 text-sm text-red-600">No sales stores available.</p>
+            )}
           </div>
 
           <button
