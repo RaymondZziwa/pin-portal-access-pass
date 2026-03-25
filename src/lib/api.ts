@@ -7,7 +7,8 @@ export const imageURL = "https://api.saharaspicehub.com/storage"
 // export const imageURL = "https://senifinaapi.efinanci.com/storage"
 // export const baseURL = "https://latcuapidemo.efinanci.com/api"
 // export const imageURL = "https://latcuapidemo.efinanci.com/storage"
-
+// export const baseURL = "https://devapi.verifin.co.tz/api"
+// export const imageURL = "https://devapi.verifin.co.tz/storage"
 export const apiRequest = async <T>(
     endpoint: string,
     method: "GET" | "POST" | "PUT" | "DELETE" = "GET",

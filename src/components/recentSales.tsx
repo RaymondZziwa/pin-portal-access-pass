@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { Printer, RotateCcw, X } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
+import { toast, Toaster } from "sonner";
 
 const RecentSales = () => {
     const navigate = useNavigate()
@@ -116,6 +117,7 @@ const user = useSelector(
         }
 
         setReversing(true);
+        console.log('Reversing sale with ID:', selectedSale);
         try {
             const response = await axios.post(
                 `${baseURL}/inventories/pos/reversesale`,
@@ -139,13 +141,13 @@ const user = useSelector(
                 setSelectedSale(null);
                 setReverseReason('');
                 // Show success message (you could use a toast here)
-                alert('Sale reversed successfully!');
+                toast.success('Sale reversed successfully!');
             } else {
-                throw new Error(response.data.message || 'Failed to reverse sale');
+                toast.error(response.data.message || 'Failed to reverse sale. Please try again.');
+                //throw new Error(response.data.message || 'Failed to reverse sale');
             }
         } catch (error) {
             console.error('Error reversing sale:', error);
-            alert('Failed to reverse sale. Please try again.');
         } finally {
             setReversing(false);
         }
@@ -241,6 +243,7 @@ const user = useSelector(
 
     return (
         <div className="min-h-screen bg-gray-50 p-6">
+            <Toaster position="top-right" />
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                  <div className='flex flex-row justify-between'>
