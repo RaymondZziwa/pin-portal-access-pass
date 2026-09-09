@@ -35,6 +35,7 @@ export const PaymentComponent: React.FC<PaymentComponentProps> = ({
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
   const [customerName, setCustomerName] = useState<string>('');
   const [isPartialPayment, setIsPartialPayment] = useState<boolean>(false);
+    const currency = JSON.parse(localStorage.getItem('user') || '').user.organisation.base_currency.code;
 
   // Keep selected payment method details
   useEffect(() => {
@@ -49,7 +50,7 @@ export const PaymentComponent: React.FC<PaymentComponentProps> = ({
   // Prepare react-select options
   const customerOptions = customers.map((c: any) => ({
     value: c.id,
-    label: `${c.organization_name ? `${c.organization_name} - ` : ''} ${c.first_name ?? ''} ${c.last_name ?? ''} - ${c.phone} - Credit: (UGX ${c.outstanding_sale_balance})`.trim(),
+    label: `${c.organization_name ? `${c.organization_name} - ` : ''} ${c.first_name ?? ''} ${c.last_name ?? ''} - ${c.phone} - Credit: (${currency} ${c.outstanding_sale_balance})`.trim(),
   }));
 
   // Handle select change for registered customer

@@ -20,7 +20,7 @@ const CartItem: React.FC<CartItemProps> = ({
   isMobile = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-
+  const currency = JSON.parse(localStorage.getItem('user') || '').user.organisation.base_currency.code;
 const [tempPrice, setTempPrice] = useState(
   item.actual_selling_price ?? item.selling_price ?? ""
 );
@@ -129,7 +129,7 @@ useEffect(() => {
         {/* Subtotal */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <span className="text-sm font-medium text-gray-700">Subtotal:</span>
-          <span className="font-bold text-teal-600">UGX {subtotal.toFixed(2)}</span>
+          <span className="font-bold text-teal-600">{currency} {subtotal.toFixed(2)}</span>
         </div>
 
         {/* Expand/Collapse Button */}

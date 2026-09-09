@@ -26,6 +26,7 @@ interface PosItemCardProps {
   quantity: any;
   addItem: () => void;
   item: CartItemType;
+  currency: string;
   isMobile?: boolean;
 }
 
@@ -36,7 +37,8 @@ export const PosItemCard: React.FC<PosItemCardProps> = ({
   addItem, 
   item, 
   isMobile = false, 
-  quantity 
+  quantity,
+  currency
 }) => {
   return (
     <div
@@ -65,7 +67,7 @@ export const PosItemCard: React.FC<PosItemCardProps> = ({
           {name} {quantity == 0 && (<span className="text-xs text-red-400">Out of stock</span>)}
         </h3>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-teal-600">UGX {price}</span>
+          <span className="text-xs font-bold text-teal-600">{currency} {price}</span>
           <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
             QTY: {quantity}
           </span>

@@ -1,8 +1,12 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios"
 import { toast } from "sonner";
 
- export const baseURL = "https://api.saharaspicehub.com/api"
-export const imageURL = "https://api.saharaspicehub.com/storage"
+// export const baseURL = "https://api.saharaspicehub.com/api"
+// export const imageURL = "https://api.saharaspicehub.com/storage"
+// export const baseURL = "https://devapi.saharaspicehub.com/api"
+// export const imageURL = "https://devapi.saharaspicehub.com/storage"
+export const baseURL = "https://vogueapi.efinanci.com/api"
+export const imageURL = "https://vogueapi.efinanci.com/storage"
 // export const baseURL = "https://senifinaapi.efinanci.com/api"
 // export const imageURL = "https://senifinaapi.efinanci.com/storage"
 // export const baseURL = "https://latcuapidemo.efinanci.com/api"

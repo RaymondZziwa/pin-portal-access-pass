@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { baseURL } from '@/lib/api';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
-import { Currency } from "lucide-react";
+import { Currency, Printer, Eye } from "lucide-react";
 import AddPaymentModal from './collectCreditPayment';
 import { useNavigate } from 'react-router-dom';
+import { PrintableContent } from './PrintableContent';
+import { toast, Toaster } from "sonner";
+import PreviewModal from './previewModal';
 
 const CreditSales = () => {
     const navigate = useNavigate()
+      const currency = JSON.parse(localStorage.getItem('user') || '').user.organisation.base_currency.code;
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({
@@ -19,15 +23,94 @@ const CreditSales = () => {
     });
     const [showModal, setShowModal] = useState(false);
     const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+    const [showPrintable, setShowPrintable] = useState(false);
+    const [selectedSaleForPrint, setSelectedSaleForPrint] = useState(null);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [selectedSaleForPreview, setSelectedSaleForPreview] = useState(null);
+    const receiptRef = useRef<HTMLDivElement>(null);
     const bkpUser = JSON.parse(localStorage.getItem('user'));
-const user = useSelector(
-  (state: RootState) => state.userAuth.user?.employee?.id ?? bkpUser?.user?.employee?.id
-);
-
+    const user = useSelector(
+        (state: RootState) => state.userAuth.user?.employee?.id ?? bkpUser?.user?.employee?.id
+    );
 
     const handleCollectPayment = (saleId: string) => {
         setSelectedSaleId(saleId);
         setShowModal(true);
+    };
+
+    const handlePreview = (sale: any) => {
+        setSelectedSaleForPreview(sale);
+        setShowPreviewModal(true);
+    };
+
+    const generateDetailedReceipt = (sale: any) => {
+        return new Promise<void>((resolve, reject) => {
+            setSelectedSaleForPrint(sale);
+            setShowPrintable(true);
+            
+            setTimeout(() => {
+                const printContent = receiptRef.current;
+                if (printContent) {
+                    const printWindow = window.open('', '_blank', 'width=800,height=600');
+                    if (printWindow) {
+                        const content = printContent.innerHTML;
+                        
+                        printWindow.document.write(`
+                            <!DOCTYPE html>
+                            <html>
+                              <head>
+                                <title>Receipt-${sale.invoice_no}</title>
+                                <meta charset="utf-8">
+                                <meta name="viewport" content="width=device-width, initial-scale=1">
+                                <style>
+                                  body { 
+                                    font-family: Arial, sans-serif; 
+                                    margin: 0;
+                                    background: white;
+                                    color: #333;
+                                  }
+                                  @page {
+                                    size: 80mm auto;
+                                    margin: 0;
+                                  }
+                                  @media print {
+                                    body { margin: 0; }
+                                  }
+                                </style>
+                              </head>
+                              <body>
+                                <div>${content}</div>
+                              </body>
+                            </html>
+                          `);
+                        
+                        printWindow.document.close();
+
+                        printWindow.onload = () => {
+                            printWindow.print();
+                            setTimeout(() => {
+                                printWindow.close();
+                            }, 120000);
+                        };
+
+                        printWindow.focus();
+                        
+                        setShowPrintable(false);
+                        setSelectedSaleForPrint(null);
+                        resolve();
+                    } else {
+                        toast.error('Popup blocked! Please allow popups for this site to view receipts.');
+                        setShowPrintable(false);
+                        setSelectedSaleForPrint(null);
+                        reject(new Error('Popup blocked'));
+                    }
+                } else {
+                    setShowPrintable(false);
+                    setSelectedSaleForPrint(null);
+                    reject(new Error('Receipt content not found'));
+                }
+            }, 100);
+        });
     };
 
     useEffect(() => {
@@ -99,7 +182,7 @@ const user = useSelector(
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
-            currency: 'UGX'
+            currency: currency,
         }).format(parseFloat(amount));
     };
 
@@ -160,13 +243,13 @@ const user = useSelector(
                 {/* Header */}
                 <div className='flex flex-row justify-between'>
                     <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">Credit Overview</h1>
-                    <p className="text-gray-600 mt-2">Manage and track your credit transactions</p>
+                        <h1 className="text-3xl font-bold text-gray-900">Credit Overview</h1>
+                        <p className="text-gray-600 mt-2">Manage and track your credit transactions</p>
                     </div>
                     <button
                         className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded-lg shadow-md transition-all duration-200 ease-in-out active:scale-95 h-[50px]"
                         onClick={()=> navigate('/pos')}
-                        >
+                    >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             className="w-5 h-5"
@@ -177,8 +260,7 @@ const user = useSelector(
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                         Go Back
-                        </button>
-
+                    </button>
                 </div>
 
                 {/* Summary Cards */}
@@ -238,7 +320,6 @@ const user = useSelector(
                 {/* Filters */}
                 <div className="bg-white rounded-lg shadow mb-6 p-6">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        {/* Search */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Search
@@ -252,7 +333,6 @@ const user = useSelector(
                             />
                         </div>
 
-                        {/* Status Filter */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Status
@@ -269,7 +349,6 @@ const user = useSelector(
                             </select>
                         </div>
 
-                        {/* Start Date */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Start Date
@@ -282,7 +361,6 @@ const user = useSelector(
                             />
                         </div>
 
-                        {/* End Date */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 End Date
@@ -338,7 +416,7 @@ const user = useSelector(
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Status
                                     </th>
-                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Action
                                     </th>
                                 </tr>
@@ -380,10 +458,31 @@ const user = useSelector(
                                             {getStatusBadge(sale.status)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <button className="flex items-center gap-2 px-3 py-2 rounded bg-gray-100 hover:bg-gray-200" onClick={() => handleCollectPayment(sale.sale_id)}>
-                                                <Currency className="w-5 h-5" />
-                                                Collect Payment
-                                            </button>
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    className="flex items-center gap-2 px-3 py-2 rounded bg-blue-100 hover:bg-blue-200 text-blue-700"
+                                                    onClick={() => handlePreview(sale)}
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                    <span className="text-sm">Preview</span>
+                                                </button>
+                                                {sale.paid > 0 && (
+                                                    <button 
+                                                        className="flex items-center gap-2 px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
+                                                        onClick={() => generateDetailedReceipt(sale)}
+                                                    >
+                                                        <Printer className="w-4 h-4" />
+                                                        <span className="text-sm">Print</span>
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    className="flex items-center gap-2 px-3 py-2 rounded bg-teal-100 hover:bg-teal-200 text-teal-700" 
+                                                    onClick={() => handleCollectPayment(sale.sale_id)}
+                                                >
+                                                    <Currency className="w-4 h-4" />
+                                                    <span className="text-sm">Collect</span>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -410,13 +509,59 @@ const user = useSelector(
                     )}
                 </div>
             </div>
+            
             <AddPaymentModal
-            visible={showModal}
-            onHide={() => setShowModal(false)}
-            id={selectedSaleId}
-            onSuccess={fetchSalesData}
+                visible={showModal}
+                onHide={() => setShowModal(false)}
+                id={selectedSaleId}
+                onSuccess={fetchSalesData}
             />
 
+            <PreviewModal
+                show={showPreviewModal}
+                onClose={() => setShowPreviewModal(false)}
+                sale={selectedSaleForPreview}
+                formatCurrency={formatCurrency}
+                formatDate={formatDate}
+            />
+
+            {/* Conditionally Rendered Print Content */}
+            {showPrintable && selectedSaleForPrint && (
+                <div style={{ display: "none" }}>
+                    <div ref={receiptRef}>
+                        <PrintableContent
+                            company={JSON.parse(localStorage.getItem('user') || '{}').user?.organisation || {}}
+                            store={selectedSaleForPrint.warehouse?.name}
+                            customer={{ name: selectedSaleForPrint.customer }}
+                            sale={{
+                                cashier: `${JSON.parse(localStorage.getItem('user') || '{}').user?.first_name || ''} ${JSON.parse(localStorage.getItem('user') || '{}').user?.last_name || ''}`.trim() || JSON.parse(localStorage.getItem('user') || '{}').user?.username || 'Admin',
+                                receipt_number: selectedSaleForPrint.invoice_no,
+                                date: selectedSaleForPrint.date
+                            }}
+                            items={selectedSaleForPrint.items.map(item => ({
+                                item: { name: item.item_name },
+                                quantity: item.quantity,
+                                actual_selling_price: parseFloat(item.unit_price || 0),
+                                discount: 0
+                            }))}
+                            totals={{
+                                total: parseFloat(selectedSaleForPrint.total),
+                                tax: 0,
+                                tax_rate: 0,
+                                discount: 0
+                            }}
+                            payment={{
+                                method: selectedSaleForPrint.payment_method?.name || "Cash",
+                                amount_paid: selectedSaleForPrint.paid,
+                                change: 0
+                            }}
+                            currency={JSON.parse(localStorage.getItem('user') || '{}')?.base_currency}
+                            amountPaid={selectedSaleForPrint.paid}
+                        />
+                    </div>
+                </div>
+            )}
+            <Toaster />
         </div>
     );
 };

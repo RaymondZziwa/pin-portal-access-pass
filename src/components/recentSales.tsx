@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { baseURL } from '@/lib/api';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { Printer, RotateCcw, X } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
+import { PrintableContent } from './PrintableContent';
 import { toast, Toaster } from "sonner";
 
 const RecentSales = () => {
@@ -15,6 +16,11 @@ const RecentSales = () => {
     const [selectedSale, setSelectedSale] = useState(null);
     const [reverseReason, setReverseReason] = useState('');
     const [reversing, setReversing] = useState(false);
+    const [showPrintable, setShowPrintable] = useState(false);
+    const [selectedSaleForPrint, setSelectedSaleForPrint] = useState(null);
+    const [showReverseConfirmation, setShowReverseConfirmation] = useState(false);
+    const receiptRef = useRef<HTMLDivElement>(null);
+      const currency = JSON.parse(localStorage.getItem('user') || '').user.organisation.base_currency.code;
     const [filters, setFilters] = useState({
         status: 'all',
         startDate: '',
@@ -91,18 +97,19 @@ const user = useSelector(
       }
     );
 
-    if (saleResponse.data) {
-      const blob = new Blob([saleResponse.data], { type: "application/pdf" });
-      const url = window.URL.createObjectURL(blob);
+      if (saleResponse.data) {
+          console.log('sales', saleResponse)
+    //   const blob = new Blob([saleResponse.data], { type: "application/pdf" });
+    //   const url = window.URL.createObjectURL(blob);
 
-      const receiptTab = window.open(url, "_blank");
-      if (receiptTab) {
-        setTimeout(() => {
-          receiptTab.close();
-        }, 30000);
-      }
+    //   const receiptTab = window.open(url, "_blank");
+    //   if (receiptTab) {
+    //     setTimeout(() => {
+    //       receiptTab.close();
+    //     }, 30000);
+    //   }
 
-      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+    //   setTimeout(() => window.URL.revokeObjectURL(url), 5000);
     }
   } catch (error) {
     console.error("Failed to print receipt:", error);
@@ -110,6 +117,86 @@ const user = useSelector(
     // toast.error("Failed to print receipt. Please try again.");
   }
 };
+
+        const generateDetailedReceipt = (sale: any, externalWindow?: Window | null) => {
+                return new Promise<void>((resolve, reject) => {
+                        setSelectedSaleForPrint(sale);
+                        setShowPrintable(true);
+
+                        // Wait (poll) for the component to render and for `receiptRef` to be available
+                        const start = Date.now();
+                        const timeoutMs = 2000; // wait up to 2s
+                        const intervalMs = 50;
+
+                        const waitForRef = () => {
+                                const printContent = receiptRef.current;
+                                if (printContent) {
+                                        // Use provided external window (opened synchronously) if available to avoid popup blocking
+                                        const printWindow = externalWindow ?? window.open('', '_blank', 'width=800,height=600');
+
+                                        if (!printWindow) {
+                                                toast.error('Popup blocked! Please allow popups for this site to view receipts.');
+                                                setShowPrintable(false);
+                                                setSelectedSaleForPrint(null);
+                                                return reject(new Error('Popup blocked'));
+                                        }
+
+                                        const content = printContent.innerHTML;
+
+                                        try {
+                                                printWindow.document.write(`
+                                                        <!DOCTYPE html>
+                                                        <html>
+                                                            <head>
+                                                                <title>Receipt-${sale.invoice_no}</title>
+                                                                <meta charset="utf-8">
+                                                                <meta name="viewport" content="width=device-width, initial-scale=1">
+                                                                <style>
+                                                                    body { font-family: Arial, sans-serif; margin: 0; background: white; color: #333; }
+                                                                    @page { size: 80mm auto; margin: 0; }
+                                                                    @media print { body { margin: 0; } }
+                                                                </style>
+                                                            </head>
+                                                            <body>
+                                                                <div>${content}</div>
+                                                            </body>
+                                                        </html>
+                                                    `);
+
+                                                printWindow.document.close();
+
+                                                // Auto-print the receipt as PDF
+                                                printWindow.onload = () => {
+                                                        try { printWindow.print(); } catch (e) { console.warn('Print failed:', e); }
+                                                        // Close the window after 2 minutes to allow users ample time to save/print
+                                                        setTimeout(() => { try { printWindow.close(); } catch (e) {} }, 120000);
+                                                };
+
+                                                printWindow.focus();
+
+                                                // Reset the printable state
+                                                setShowPrintable(false);
+                                                setSelectedSaleForPrint(null);
+                                                return resolve();
+                                        } catch (err) {
+                                                setShowPrintable(false);
+                                                setSelectedSaleForPrint(null);
+                                                return reject(err as Error);
+                                        }
+                                }
+
+                                if (Date.now() - start > timeoutMs) {
+                                        setShowPrintable(false);
+                                        setSelectedSaleForPrint(null);
+                                        return reject(new Error('Receipt content not found'));
+                                }
+
+                                setTimeout(waitForRef, intervalMs);
+                        };
+
+                        waitForRef();
+                });
+        };
 
     const handleReverseSale = async () => {
         if (!selectedSale || !reverseReason.trim()) {
@@ -155,7 +242,23 @@ const user = useSelector(
 
     const openReverseModal = (sale) => {
         setSelectedSale(sale);
-        setShowReverseModal(true);
+        setShowReverseConfirmation(true);
+        setReverseReason('');
+    };
+
+    const confirmReverseSale = () => {
+        if (!reverseReason.trim()) {
+            toast.error('Please provide a reason for reversal');
+            return;
+        }
+        setShowReverseConfirmation(false);
+        // Directly handle the reversal with the reason
+        handleReverseSale();
+    };
+
+    const cancelReverseSale = () => {
+        setShowReverseConfirmation(false);
+        setSelectedSale(null);
         setReverseReason('');
     };
 
@@ -186,7 +289,7 @@ const user = useSelector(
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
-            currency: 'UGX'
+            currency: currency,
         }).format(parseFloat(amount));
     };
 
@@ -473,7 +576,17 @@ const user = useSelector(
                                                     <button 
                                                         className="flex items-center gap-2 px-3 py-2 rounded bg-gray-100 hover:bg-gray-200" 
                                                         disabled={sale.paid === 0 ? true : false} 
-                                                        onClick={() => handleReceiptPrint(sale.sale_id)}
+                                                        onClick={() => {
+                                                            // Pre-open the print window synchronously to avoid popup blockers
+                                                            const preOpened = window.open('', '_blank', 'width=800,height=600');
+                                                            if (!preOpened) {
+                                                                toast.error('Popup blocked! Please allow popups for this site to view receipts.');
+                                                                return;
+                                                            }
+                                                            preOpened.document.write('<html><body><p>Preparing receipt...</p></body></html>');
+                                                            preOpened.document.close();
+                                                            generateDetailedReceipt(sale, preOpened);
+                                                        }}
                                                     >
                                                         <Printer className="w-4 h-4" />
                                                         <span className="text-sm">Print</span>
@@ -512,6 +625,67 @@ const user = useSelector(
                         </div>
                     )}
                 </div>
+
+                {/* Reverse Sale Confirmation Dialog */}
+                {showReverseConfirmation && selectedSale && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                            <div className="flex items-center mb-4">
+                                <div className="bg-red-100 p-3 rounded-full mr-3">
+                                    <RotateCcw className="w-6 h-6 text-red-600" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900">Confirm Sale Reversal</h3>
+                            </div>
+                            
+                            <div className="mb-4">
+                                <p className="text-gray-600 mb-4">
+                                    Are you sure you want to reverse this sale? This action cannot be undone.
+                                </p>
+                                
+                                <div className="bg-gray-50 p-3 rounded mb-4">
+                                    <p className="text-sm text-gray-600">
+                                        <span className="font-medium">Invoice:</span> {selectedSale.invoice_no}
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                        <span className="font-medium">Customer:</span> {selectedSale.customer}
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                        <span className="font-medium">Amount:</span> {formatCurrency(selectedSale.total)}
+                                    </p>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Reason for Reversal *
+                                    </label>
+                                    <textarea
+                                        value={reverseReason}
+                                        onChange={(e) => setReverseReason(e.target.value)}
+                                        placeholder="Enter reason for reversing this sale..."
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                        rows={3}
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div className="flex gap-3 justify-end">
+                                <button
+                                    onClick={cancelReverseSale}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmReverseSale}
+                                    disabled={!reverseReason.trim() || reversing}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {reversing ? 'Reversing...' : 'Yes, Reverse Sale'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Reverse Sale Modal */}
                 {showReverseModal && (
@@ -575,6 +749,45 @@ const user = useSelector(
                     </div>
                 )}
             </div>
+
+            {/* Conditionally Rendered Print Content */}
+            {showPrintable && selectedSaleForPrint && (
+                <div style={{ display: "none" }}>
+                    <div ref={receiptRef}>
+                        <PrintableContent
+                            company={JSON.parse(localStorage.getItem('user') || '{}').user?.organisation || {}}
+                            store={selectedSaleForPrint.warehouse?.name}
+                            customer={{ name: selectedSaleForPrint.customer }}
+                            sale={{
+                                cashier: `${JSON.parse(localStorage.getItem('user') || '{}').user?.first_name || ''} ${JSON.parse(localStorage.getItem('user') || '{}').user?.last_name || ''}`.trim() || JSON.parse(localStorage.getItem('user') || '{}').user?.username || 'Admin',
+                                receipt_number: selectedSaleForPrint.invoice_no,
+                                date: selectedSaleForPrint.date
+                            }}
+                            items={selectedSaleForPrint.items.map(item => ({
+                                item: { name: item.item_name },
+                                quantity: item.quantity,
+                                actual_selling_price: parseFloat(item.unit_price || 0),
+                                uom: item.uom,
+                                discount: 0
+                            }))}
+                            totals={{
+                                total: parseFloat(selectedSaleForPrint.total),
+                                tax: 0,
+                                tax_rate: 0,
+                                discount: 0
+                            }}
+                            payment={{
+                                method: selectedSaleForPrint.payment_method?.name || "Cash",
+                                amount_paid: selectedSaleForPrint.paid,
+                                change: 0
+                            }}
+                            currency={JSON.parse(localStorage.getItem('user') || '{}')?.base_currency}
+                            amountPaid={selectedSaleForPrint.paid}
+                        />
+                    </div>
+                </div>
+            )}
+            <Toaster />
         </div>
     );
 };

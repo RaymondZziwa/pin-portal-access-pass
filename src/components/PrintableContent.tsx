@@ -15,9 +15,8 @@ interface PrintableContentProps {
 
 export class PrintableContent extends React.Component<PrintableContentProps> {
   render() {
-    const { company, store, customer, sale, items, totals, amountPaid, payment, currency, configs } = this.props;
-    console.log("Printable items:", company, store, customer, sale, items, currency);
-
+    const {  company, store, customer, sale, items, totals, amountPaid, payment, currency, configs } = this.props;
+    console.log("Printable items:", items, customer);
     const formattedDate = new Date().toLocaleString();
 
     return (
@@ -27,16 +26,16 @@ export class PrintableContent extends React.Component<PrintableContentProps> {
             @page { size: 80mm; margin: 0; }
             body {
                 font-family: DejaVu Sans, sans-serif;
-                font-size: 11px;
+                font-size: 10px;
                 line-height: 1.3;
                 width: 80mm;
                 background: #fff;
             }
             .receipt-container { width: 95%; max-width: 80mm; margin: auto; text-align: center; padding: 3px; }
             .header { border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 8px; }
-            .company-name { font-weight: bold; font-size: 13px; text-transform: uppercase; }
+            .company-name { font-weight: bold; font-size: 10px; text-transform: uppercase; }
             .company-address, .company-contact { font-size: 9px; margin: 2px 0; }
-            .receipt-title { font-weight: bold; font-size: 12px; margin-top: 5px; }
+            .receipt-title { font-weight: bold; font-size: 10px; margin-top: 5px; }
             .receipt-info { width: 100%; margin: 2px 0; font-size: 10px; }
             .receipt-info td { width: 50%; padding: 2px 0; }
             .customer-info { font-size: 10px; border-bottom: 1px dashed #999; padding-bottom: 3px; }
@@ -45,9 +44,9 @@ export class PrintableContent extends React.Component<PrintableContentProps> {
             .items-table td { border-bottom: 1px dashed #ccc; padding: 3px 2px; }
             .item-price, .item_amount { text-align: right; }
             .totals-section { border-top: 1px solid #000; padding-top: 5px; margin-top: 5px; }
-            .grand-total { font-weight: bold; font-size: 12px; border-top: 2px double #000; padding-top: 4px; }
+            .grand-total { font-weight: bold; font-size: 10px; border-top: 2px double #000; padding-top: 2px; }
             .payment-info { border: 1px dashed #000; margin-top: 5px; padding: 5px; }
-            .thank-you { font-weight: bold; font-size: 11px; margin: 6px 0; }
+            .thank-you { font-weight: bold; font-size: 10px; margin: 6px 0; }
             .footer { border-top: 1px dashed #000; padding-top: 5px; font-size: 9px; margin-top: 8px; }
         `}</style>
 
@@ -82,7 +81,7 @@ export class PrintableContent extends React.Component<PrintableContentProps> {
 
               <tr>
                 <td>
-                  {customer?.name && <>Customer: <strong>{customer.name}</strong></>}
+                  {customer && <>Customer: <strong>{customer}</strong></>}
                 </td>
                 <td style={{ textAlign: "right" }}>Cashier: {sale?.cashier || "Admin"}</td>
               </tr>
@@ -106,13 +105,12 @@ export class PrintableContent extends React.Component<PrintableContentProps> {
                   <td>
                     {item.item.name}
                     <div style={{ fontSize: "9px", color: "#666", fontWeight: "700" }}>
-                      @ {Number(item.actual_selling_price).toFixed(2)}
-                      {item.discount ? <> | Disc: {Number(item.discount).toFixed(1)}</> : 0}
+                      {`@${Number(item.actual_selling_price).toFixed(1)}`} {item.discount ? <> | Disc: {Number(item.discount).toFixed(1)}</> : " "}
                     </div>
                   </td>
-                  <td style={{ textAlign: "center" }}>{item.quantity}</td>
-                  <td style={{ textAlign: "center" }}>
-                    {item.item.unit_of_measure ? item.item.unit_of_measure.name.toUpperCase() : "-"}
+                  <td >{item.quantity}</td>
+                  <td >
+                    {item.item.unit_of_measure ? item.item.unit_of_measure.name.toUpperCase() : item.uom.abbreviation.toUpperCase()}
                   </td>
                   <td className="item_amount">
                     {Number(item.actual_selling_price).toFixed(1) * item.quantity}
@@ -200,14 +198,6 @@ export class PrintableContent extends React.Component<PrintableContentProps> {
           {/* Thank you */}
           <div className="thank-you">
             {configs?.thankyou_message || "Thank you!"}
-          </div>
-
-          {/* Footer */}
-          <div className="footer">
-            {/* <div>{configs?.receipt_disclaimer}</div> */}
-            <div>Call: {company?.phone}</div>
-            {totals.tax > 0 && <div>VAT Included: {Number(totals.tax).toFixed(2)}</div>}
-            <div style={{ marginTop: 4 }}>Printed: {formattedDate}</div>
           </div>
         </div>
       </div>

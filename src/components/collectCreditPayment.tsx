@@ -40,7 +40,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       payment_method_id: paymentMethod,
       transactionId: transactionId,
       payment_date: new Date().toISOString().split("T")[0],
-      is_print: true
+      is_print: false
     };
 
     try {
@@ -60,23 +60,24 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       if (saleResponse.headers["content-type"]?.includes("application/json")) {
         const json = await saleResponse.data.text();
         const parsed = JSON.parse(json);
+        console.log("Backend sale processing response:", parsed);
         toast.success(parsed.message);
       }
 
       if (saleResponse.data) {
-        const blob = new Blob([saleResponse.data], { type: "application/pdf" });
-        const url = window.URL.createObjectURL(blob);
+        // const blob = new Blob([saleResponse.data], { type: "application/pdf" });
+        // const url = window.URL.createObjectURL(blob);
 
-        if (parseInt(amountPaid) !=0) {
-          const receiptTab = window.open(url, "_blank");
-          if (receiptTab) {
-            setTimeout(() => {
-              receiptTab.close();
-            }, 300000);
-          }
-        }
+        // if (parseInt(amountPaid) !=0) {
+        //   const receiptTab = window.open(url, "_blank");
+        //   if (receiptTab) {
+        //     setTimeout(() => {
+        //       receiptTab.close();
+        //     }, 300000);
+        //   }
+        // }
         
-        setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+        // setTimeout(() => window.URL.revokeObjectURL(url), 5000);
       } 
       
       onSuccess()

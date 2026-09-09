@@ -60,7 +60,13 @@ const PosPage = () => {
   const [transactionId, setTransactionId] = useState<string | null>("");
   const [amountPaid, setAmountPaid] = useState<string | null>("");
   const [clientId, setClientId] = useState<string | null>("");
+  const [receiptContent, setReceiptContent] = useState<any>(null);
   const [receiptNumber, setReceiptNumber] = useState<string>("");
+  const [saleDate, setSaleDate] = useState<Date>(new Date());
+
+const handleSaleDateChange = (date: Date) => {
+  setSaleDate(date);
+};
   
   // Refs
   const searchRef = useRef<HTMLInputElement>(null);
@@ -75,7 +81,7 @@ const PosPage = () => {
   const token = useSelector((state: RootState) => state.userAuth.token.access_token);
   const [warehouse, setWarehouse] = useState(() => localStorage.getItem("selectedWarehouse") || "");
   const businessName = JSON.parse(localStorage.getItem('user') || '').user.organisation.organisation_name
-  
+  const currency = JSON.parse(localStorage.getItem('user') || '').user.organisation.base_currency.code;
   const isMobile = window.innerWidth < 768;
 
   // Effects
@@ -272,18 +278,28 @@ const PosPage = () => {
     setShowConfirmationModal(true);
   };
 
-  const generateReceipt = () => {
+  const generateReceipt = (externalWindow?: Window | null) => {
     return new Promise<void>((resolve, reject) => {
-    setShowPrintable(true);
-    
-    // Use setTimeout to ensure the component is rendered before accessing it
-    setTimeout(() => {
-      const printContent = receiptRef.current;
-      if (printContent) {
-          const printWindow = window.open('', '_blank', 'width=800,height=600');
-        if (printWindow) {
-          const content = printContent.innerHTML;
-          
+      setShowPrintable(true);
+
+      // Use setTimeout to ensure the component is rendered before accessing it
+      setTimeout(() => {
+        const printContent = receiptRef.current;
+        if (!printContent) return reject(new Error('Receipt content not found'));
+
+        // Use provided external window (opened synchronously) if available to avoid popup blocking
+        const printWindow = externalWindow ?? window.open('', '_blank', 'width=800,height=600');
+
+        if (!printWindow) {
+          toast.error('Popup blocked! Please allow popups for this site to view receipts.');
+          setShowPrintable(false);
+          return reject(new Error('Popup blocked'));
+        }
+
+        const content = printContent.innerHTML;
+
+        // Write content into the print window
+        try {
           printWindow.document.write(`
             <!DOCTYPE html>
             <html>
@@ -294,17 +310,12 @@ const PosPage = () => {
                 <style>
                   body { 
                     font-family: Arial, sans-serif; 
-                      margin: 0;
+                    margin: 0;
                     background: white;
                     color: #333;
                   }
-                    @page {
-                      size: 80mm auto;
-                      margin: 0;
-                  }
-                  @media print {
-                    body { margin: 0; }
-                  }
+                  @page { size: 80mm auto; margin: 0; }
+                  @media print { body { margin: 0; } }
                 </style>
               </head>
               <body>
@@ -312,37 +323,51 @@ const PosPage = () => {
               </body>
             </html>
           `);
-          
           printWindow.document.close();
 
-            // Auto-print the receipt as PDF
-            printWindow.onload = () => {
+          // Auto-print the receipt as PDF when content loads
+          printWindow.onload = () => {
+            try {
               printWindow.print();
-              // Close the window after 2 minutes to allow users ample time to save/print
-              setTimeout(() => {
+            } catch (e) {
+              console.warn('Print failed:', e);
+            }
+            // Close the window after 2 minutes to allow users ample time to save/print
+            setTimeout(() => {
+              try {
                 printWindow.close();
-              }, 120000);
-            };
+              } catch (e) {
+                // ignore
+              }
+            }, 120000);
+          };
 
           printWindow.focus();
-          
-            // Reset the printable state
+
+          // Reset the printable state
           setShowPrintable(false);
-            resolve();
-        } else {
-          toast.error('Popup blocked! Please allow popups for this site to view receipts.');
+          resolve();
+        } catch (err) {
           setShowPrintable(false);
-            reject(new Error('Popup blocked'));
-          }
-        } else {
-          reject(new Error('Receipt content not found'));
+          reject(err);
         }
       }, 100);
     });
   };
 
   const handlePrintInNewTab = () => {
-    generateReceipt().then(() => {
+    // Open the print window synchronously to avoid popup blockers
+    const preOpened = window.open('', '_blank', 'width=800,height=600');
+    if (!preOpened) {
+      toast.error('Popup blocked! Please allow popups for this site to view receipts.');
+      return;
+    }
+
+    // Provide a placeholder while backend/DOM finishes
+    preOpened.document.write('<html><body><p>Preparing receipt...</p></body></html>');
+    preOpened.document.close();
+
+    generateReceipt(preOpened).then(() => {
       // Clear state after receipt is generated
     setCart([]);
     setPaymentMethod("");
@@ -373,6 +398,12 @@ const processCheckout = async (printReceipt: boolean) => {
   const randomStr = Math.random().toString(36).substr(2, 3).toUpperCase(); // 3 random chars
   const newReceiptNumber = `RCP-${timestamp}${randomStr}`;
 
+  if (!paymentMethod && !isCreditSale) {
+    toast.error('Please select a payment method');
+    return;
+  }
+
+  console.log('total amount', totalAmount)
   const payload = {
     cashier_id: user.user?.id,
     cashier_name: `${user.user?.first_name || ''} ${user.user?.last_name || ''}`,
@@ -389,10 +420,12 @@ const processCheckout = async (printReceipt: boolean) => {
     })),
     payment_method_id: paymentMethod || "",
     amount_paid: isCreditSale ? parseFloat(amountPaid || "0") : totalAmount,
-    sale_date: `${new Date().getDate()}/${new Date().getMonth() + 1}/${new Date().getFullYear()}`,
+    // sale_date: `${new Date().getDate()}/${new Date().getMonth() + 1}/${new Date().getFullYear()}`,
+    sale_date: saleDate,
     currency_id: localStorage.getItem("selectedCurrency"),
-    amount: totalAmount,
-    is_print: printReceipt,
+    amount: total,
+    is_print: false,
+    //is_print: printReceipt,
   };
 
   if (isCreditSale && !clientId) {
@@ -401,45 +434,67 @@ const processCheckout = async (printReceipt: boolean) => {
     
   }
 
-  try {
-    setIsPrinting(true);
+    try {
+      setIsPrinting(true);
 
-    // Generate receipt immediately on frontend
-    if (printReceipt) {
-      // Set receipt number in state before generating receipt
-      setReceiptNumber(newReceiptNumber);
-      await generateReceipt();
-    }
+      // If printing is requested, open the print window synchronously to avoid popup blockers
+      let preOpenedWindow: Window | null = null;
+      if (printReceipt) {
+        preOpenedWindow = window.open('', '_blank', 'width=800,height=600');
+        if (!preOpenedWindow) {
+          toast.error('Popup blocked! Please allow popups for this site to view receipts.');
+          // Continue without printing
+          printReceipt = false;
+        } else {
+          preOpenedWindow.document.write('<html><body><p>Processing sale, preparing receipt...</p></body></html>');
+          preOpenedWindow.document.close();
+        }
+      }
 
-    // Send sale data to backend asynchronously without waiting for response
-    axios.post(
-      `${baseURL}/inventories/pointsofsale`,
-      payload,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        responseType: "blob",
-      }
-    ).then((saleResponse) => {
-    if (saleResponse.headers["content-type"]?.includes("application/json")) {
-        saleResponse.data.text().then((text) => {
-          const parsed = JSON.parse(text);
-      toast.success(parsed.message);
-        });
-      }
-    }).catch((error: any) => {
-      console.log("Backend sale processing failed:", error.response);
-      // Don't show error toast here as receipt was already generated
-      // The sale might still be processed successfully even if backend response fails
-    });
+      // Send sale data to backend asynchronously
+      axios.post(
+        `${baseURL}/inventories/pointsofsale`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          responseType: "blob",
+        }
+      ).then((saleResponse) => {
+        if (saleResponse.headers["content-type"]?.includes("application/json")) {
+          saleResponse.data.text().then(async (text) => {
+            const parsed = JSON.parse(text);
+            console.log("Backend sale processing response:", parsed.data.sale);
+            setReceiptContent(parsed.data.sale);
+            if (printReceipt) {
+              // Set receipt number in state before generating receipt
+              setReceiptNumber(parsed.data.sale.unique_id);
+              try {
+                await generateReceipt(preOpenedWindow);
+              } catch (err) {
+                console.error('Receipt generation failed after sale:', err);
+                // close preOpenedWindow if still open
+                try { preOpenedWindow?.close(); } catch (e) {}
+              }
+              setCart([]);
+            } else {
+              setCart([]);
+            }
+            toast.success(parsed.message);
+          });
+        }
+      }).catch((error: any) => {
+        console.log("Backend sale processing failed:", error.response);
+        // Don't show error toast here as receipt was already generated
+        // The sale might still be processed successfully even if backend response fails
+      });
 
     // Show success message immediately after receipt generation
     //toast.success("Sale completed successfully!");
 
     // Clear cart and reset state after successful receipt generation
-    setCart([]);
     setPaymentMethod("");
     setTransactionId("");
     setAmountPaid("");
@@ -449,6 +504,7 @@ const processCheckout = async (printReceipt: boolean) => {
     setShowConfirmationModal(false);
 
   } catch (error: any) {
+    console.log(error)
     console.log("Checkout failed:", error.response);
     toast.error(error?.response?.data?.message || "Checkout failed. Please try again.");
   } finally {
@@ -469,11 +525,14 @@ const processCheckout = async (printReceipt: boolean) => {
       />
 
       <Toaster />
+     
       <Header
-        businessName={businessName}
+         businessName={businessName}
         warehouse={warehouse}
         user={user}
         onLogout={handleLogout}
+        saleDate={saleDate}
+        onSaleDateChange={handleSaleDateChange}
       />
 
       <div className={`flex ${isMobile ? "flex-col" : "flex-row"} h-[calc(100vh-80px)]`}>
@@ -521,6 +580,7 @@ const processCheckout = async (printReceipt: boolean) => {
                     price={Math.floor(+item.item.selling_price)}
                     addItem={() => addItemToCart(item)}
                     isMobile={isMobile}
+                    currency={currency}
                   />
                 ))}
               </div>
@@ -559,72 +619,72 @@ const processCheckout = async (printReceipt: boolean) => {
         </div>
 
         {/* Cart Section */}
-        <div className={`${isMobile ? "w-full" : "w-2/5"} flex flex-col bg-gradient-to-b from-gray-50 to-white`}>
-          <div className="flex-1 flex flex-col">
-            <div className="p-6 border-b border-gray-100 bg-white">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-bold text-gray-800">Order Summary</h2>
-                <div className="bg-teal-100 text-teal-600 px-3 py-1 rounded-full text-sm font-medium">
-                  {cart.length} items
-                </div>
-              </div>
-              <p className="text-sm text-gray-600">Review your order before checkout</p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {cart.length > 0 ? (
-                cart.map((item) => (
-                  <CartItem
-                    key={item.item_id}
-                    item={item}
-                    updateQuantity={updateQuantity}
-                    updateSellingPrice={updateSellingPrice}
-                    updateDiscount={updateDiscount}
-                    removeItemFromCart={removeItemFromCart}
-                    isMobile={isMobile}
-                  />
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <ShoppingCart className="w-10 h-10" />
-                  </div>
-                  <p className="text-lg font-medium">Your cart is empty</p>
-                  <p className="text-sm mt-1">Add items to get started</p>
-                </div>
-              )}
-            </div>
-
-            <div className="p-6 border-t border-gray-100 bg-white">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-4 bg-gradient-to-r from-teal-50 to-purple-50 rounded-xl">
-                  <span className="font-semibold text-gray-700">Total Amount:</span>
-                  <span className="font-bold text-2xl text-teal-600">
-                    UGX {totalAmount.toFixed(2)}
-                  </span>
-                </div>
-                <button
-                  onClick={handleCheckout}
-                  disabled={cart.length === 0}
-                  className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 ${
-                    cart.length > 0 
-                      ? "bg-teal-500 hover:bg-teal-800 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
-                      : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  }`}
-                >
-                  {cart.length > 0 ? (
-                    <div className="flex items-center justify-center space-x-2">
-                      <CreditCard className="w-5 h-5" />
-                      <span>Proceed to Checkout</span>
-                    </div>
-                  ) : (
-                    "Add items to checkout"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
+<div className={`${isMobile ? "w-full" : "w-2/5"} flex flex-col bg-gradient-to-b from-gray-50 to-white h-[calc(100vh-2rem)]`}>
+  <div className="flex-1 flex flex-col min-h-0">
+    <div className="p-6 border-b border-gray-100 bg-white flex-shrink-0">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-xl font-bold text-gray-800">Order Summary</h2>
+        <div className="bg-teal-100 text-teal-600 px-3 py-1 rounded-full text-sm font-medium">
+          {cart.length} items
         </div>
+      </div>
+      <p className="text-sm text-gray-600">Review your order before checkout</p>
+    </div>
+
+    <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
+      {cart.length > 0 ? (
+        cart.map((item) => (
+          <CartItem
+            key={item.item_id}
+            item={item}
+            updateQuantity={updateQuantity}
+            updateSellingPrice={updateSellingPrice}
+            updateDiscount={updateDiscount}
+            removeItemFromCart={removeItemFromCart}
+            isMobile={isMobile}
+          />
+        ))
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full text-gray-400">
+          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <ShoppingCart className="w-10 h-10" />
+          </div>
+          <p className="text-lg font-medium">Your cart is empty</p>
+          <p className="text-sm mt-1">Add items to get started</p>
+        </div>
+      )}
+    </div>
+
+    <div className="p-6 border-t border-gray-100 bg-white flex-shrink-0">
+      <div className="space-y-4">
+        <div className="flex justify-between items-center p-4 bg-gradient-to-r from-teal-50 to-purple-50 rounded-xl">
+          <span className="font-semibold text-gray-700">Total Amount:</span>
+          <span className="font-bold text-2xl text-teal-600">
+            {currency} {totalAmount.toFixed(2)}
+          </span>
+        </div>
+        <button
+          onClick={handleCheckout}
+          disabled={cart.length === 0}
+          className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 ${
+            cart.length > 0 
+              ? "bg-teal-500 hover:bg-teal-800 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
+              : "bg-gray-200 text-gray-500 cursor-not-allowed"
+          }`}
+        >
+          {cart.length > 0 ? (
+            <div className="flex items-center justify-center space-x-2">
+              <CreditCard className="w-5 h-5" />
+              <span>Proceed to Checkout</span>
+            </div>
+          ) : (
+            "Add items to checkout"
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
       </div>
 
       <ConfirmationModal
@@ -648,21 +708,22 @@ const processCheckout = async (printReceipt: boolean) => {
       />
 
       {/* Conditionally Rendered Print Content */}
-      {showPrintable && (
+      { showPrintable && (
         <div style={{ display: "none" }}>
           <div ref={receiptRef}>
             <PrintableContent
               company={company}
               store={warehouses.find((w) => w.id === warehouse)?.name}
-              customer={customer}
+              customer={receiptContent.customer_name}
               sale={{
                 cashier: `${user.user?.first_name || ''} ${user.user?.last_name || ''}`.trim() || user.user?.username || 'Admin',
                 receipt_number: receiptNumber || undefined
               }}
+              receiptNumber = {receiptNumber}
               items={cart}
               totals={{
                 total: totalAmount,
-                tax: 0, // You might want to calculate tax here if needed
+                tax: 0,
                 tax_rate: 0,
                 discount: cart.reduce((sum, item) => sum + item.discount * item.quantity, 0)
               }}
